@@ -1,0 +1,13 @@
+FHIRConnect for Visual Studio Code
+Copyright 2026 David Moner
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+test/fixtures/mapping-lib-0.9.0 contains the mapping files of the 0.9.0 tag of the
+FHIRconnect mapping library (https://github.com/SevKohler/FHIRconnect-mapping-lib),
+licensed under the Apache License, Version 2.0.
+
+The v0.9.0 grammar in src/server/grammar is derived from the model classes and JSON
+schemas of the openFHIR engine (https://github.com/medblocks/openFHIR), licensed under
+the Apache License, Version 2.0. Key descriptions follow the FHIRconnect specification
+(https://github.com/SevKohler/FHIRconnect-spec), licensed under the Apache License, Version 2.0.

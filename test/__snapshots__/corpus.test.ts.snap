@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`mapping library 0.9.0 > only warns about things the openFHIR engine does not know 1`] = `
+[
+  "model/cluster/org.openehr/specimen.v1.yml: \`not in\` is not a valid value for \`operator\`. Expected \`one of\`, \`not of\`, \`empty\`, \`not empty\`, \`type\`.",
+  "model/evaluation/org.openehr/vital_status.v1.yml: Empty item in \`mappings\`.",
+  "projects/org.highmed/KDS/diagnose/KDS_problem_diagnose.yml: \`not contains\` is not a valid value for \`operator\`. Expected \`one of\`, \`not of\`, \`empty\`, \`not empty\`, \`type\`.",
+  "projects/org.highmed/KDS/person/KDS_admin_entry_person.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; the openFHIR engine fails on methods without it.",
+  "projects/org.highmed/KDS/person_pseudo/KDS_pseudo_admin_person.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; the openFHIR engine fails on methods without it.",
+  "projects/org.highmed/KDS/vitalstatus/KDS_vitalsigns.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; the openFHIR engine fails on methods without it.",
+]
+`;
