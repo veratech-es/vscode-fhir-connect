@@ -37,7 +37,7 @@ function interval(min: number, max: number | undefined | string): string {
 function nodeSummary(node: OptNode): string {
   const code = node.kind === 'root' ? node.archetypeId : node.nodeId;
   const lines = [`**${node.label ?? node.rmType}** · \`${node.rmType}\` · ${interval(node.occurrences.min, node.occurrences.max)}`];
-  if (node.description && node.description !== node.label) lines.push(node.description);
+  if (node.description && node.description !== node.label && !/^@\s*internal\s*@$/.test(node.description)) lines.push(node.description);
   const archetype = node.owner?.archetypeId;
   const where = [code && `\`${code}\``, archetype && node.kind !== 'root' && `in \`${archetype}\``].filter(Boolean).join(' ');
   lines.push([where, `template \`${node.template.id}\``].filter(Boolean).join(' · '));
