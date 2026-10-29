@@ -2,7 +2,7 @@
   "name": "vscode-fhir-connect",
   "displayName": "FHIRConnect",
   "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, hover documentation and outline.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "damoca",
   "license": "Apache-2.0",
   "private": true,
@@ -69,6 +69,7 @@
     "vscode-languageclient": "9.0.1",
     "vscode-languageserver": "9.0.1",
     "vscode-languageserver-textdocument": "1.0.12",
+    "vscode-uri": "3.0.8",
     "yaml": "2.6.1"
   },
   "devDependencies": {

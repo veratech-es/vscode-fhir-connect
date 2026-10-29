@@ -124,7 +124,7 @@ export function cursorContext(lines: string[], lineNo: number, character: number
   const before = line.slice(0, character);
   const lineIndent = /^\s*/.exec(line)![0].length;
 
-  const keyTyping = /^(\s*)(-\s+)?([\w$]*)$/.exec(before);
+  const keyTyping = /^(\s*)(-\s+)?([\w$.\-]*)$/.exec(before);
   if (keyTyping) {
     const dashCol = keyTyping[2] ? keyTyping[1].length : undefined;
     const keyCol = keyTyping[1].length + (keyTyping[2]?.length ?? 0);

@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.2.0 (unreleased)
+
+Navigation between mapping files (phase 2), following the openFHIR IntelliJ plugin.
+
+- Workspace index of every mapping file by `metadata.name` and archetype id, kept up to date as files
+  are edited, created or deleted.
+- Go to Definition, Find All References and Rename Symbol for `slotArchetype`, `spec.extends`,
+  `context.archetypes`, `context.extensions` and `context.start`; the nearest declaration wins.
+- Completion of mapping names of the expected file type at those keys, and of method names for
+  `appendTo`.
+- Hover on a reference shows the file it points at.
+- Warnings for names and `appendTo` methods that do not exist in the workspace.
+
+## 0.1.0
 
 First version (phase 1), for FHIRConnect grammar v0.9.0.
 

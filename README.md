@@ -25,6 +25,23 @@ recognised but not validated yet.
   specification page, and for path variables.
 - **Outline** and breadcrumbs: header sections and the tree of mapping methods, including
   `followedBy` children, `reference` blocks and manual mappings.
+- **Navigation between mapping files**, as in the
+  [openFHIR IntelliJ plugin](https://github.com/openFHIR/intellij-fhir-connect). Every mapping file in
+  the workspace is indexed by its `metadata.name` (and, for models, its archetype id). On the reference
+  sites `slotArchetype`, `spec.extends`, `context.archetypes`, `context.extensions` and
+  `context.start`:
+  - **Go to Definition** (F12 / Ctrl+click) opens the mapping file. When the name is declared in
+    several folders, the file sharing the longest folder path with the current file wins; ties are
+    all offered.
+  - **Find All References** (Shift+F12), from a reference or from a `metadata.name`, lists every file
+    that uses the mapping.
+  - **Rename Symbol** (F2) renames a mapping and updates every reference to it.
+  - **Completion** offers the mapping names of the expected type (models for `slotArchetype`,
+    extensions for `context.extensions`, …), nearest first.
+  - **Hover** shows which file the reference points at.
+  - A **warning** marks names that no file in the workspace declares.
+  - `appendTo` jumps to, completes and checks the method of the model named in `spec.extends`
+    (`parent.child` for nested methods).
 - **New mapping file** command (*FHIRConnect: New Mapping File*) for model, extension and context
   files.
 
@@ -46,7 +63,7 @@ affected.
 ```shell
 npm ci
 npm run package                      # creates vscode-fhir-connect-<version>.vsix
-code --install-extension vscode-fhir-connect-0.1.0.vsix
+code --install-extension vscode-fhir-connect-0.2.0.vsix
 ```
 
 Or in VS Code: *Extensions* view → `…` → *Install from VSIX…*.
@@ -73,18 +90,19 @@ The extension is a thin client (`src/client`) that starts a language server (`sr
 | `server/document.ts` | Detects FHIRConnect files and parses them with the `yaml` library. |
 | `server/validation.ts` | Walks the YAML tree against the grammar. |
 | `server/cursor.ts` | Works out the block under the cursor from indentation, so completion works in files that do not parse yet. |
+| `server/workspace.ts`, `scan.ts` | The workspace index: names, references and methods of every mapping file, and how a name resolves. |
 | `server/completion.ts`, `hover.ts`, `symbols.ts` | The language features. |
 
 `test/fixtures/mapping-lib-0.9.0` holds the 75 mapping files of the 0.9.0 tag of the
 [FHIRconnect mapping library](https://github.com/SevKohler/FHIRconnect-mapping-lib). The corpus test
-requires them to validate without errors; the warnings they produce are kept in a snapshot.
+requires them to validate without errors; the warnings they produce, and the references that resolve
+to nothing, are kept in snapshots.
 
 ## Roadmap
 
-1. **Phase 1 (this version):** validation, completion, hover, outline, new file command.
-2. **Phase 2:** workspace index of mapping names; go to definition, find usages, rename and name
-   completion for `slotArchetype`, `spec.extends`, `appendTo` and the context lists, following the
-   [openFHIR IntelliJ plugin](https://github.com/openFHIR/intellij-fhir-connect).
+1. **Phase 1 (0.1.0):** validation, completion, hover, outline, new file command.
+2. **Phase 2 (0.2.0):** navigation between mapping files: definition, references, rename, name
+   completion and unresolved names.
 3. **Phase 3:** openEHR templates and FHIR StructureDefinitions: path resolution, path completion and
    path diagnostics.
 4. **Phase 4:** running mappings against the openFHIR engine, grammar v1.0.0, AQL conversion.

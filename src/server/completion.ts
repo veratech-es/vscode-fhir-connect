@@ -3,25 +3,62 @@ import {
   InsertTextFormat,
   type CompletionItem,
   type Position,
+  type Range,
 } from 'vscode-languageserver';
 import { isRequired, keysFor, resolvePath, type KeySpec, type ScalarSpec, type ValueSpec } from './grammar';
 import { cursorContext } from './cursor';
 import type { FcDocument } from './document';
 import { keyDocumentation, markdown, VARIABLE_DOCS } from './docs';
+import type { RefKind } from './workspace';
+
+/** A mapping (or method) name offered where a reference is typed. */
+export interface NameCandidate {
+  label: string;
+  detail?: string;
+}
+
+/** Supplies names from the workspace index for a reference of `kind`. */
+export type NameProvider = (kind: RefKind) => NameCandidate[];
+
+/** Which keys hold references, by the block they sit in. */
+const REFERENCE_KEYS: Record<string, Partial<Record<string, RefKind>>> = {
+  method: { slotArchetype: 'slotArchetype', appendTo: 'appendTo' },
+  spec: { extends: 'extends' },
+  context: { start: 'start', archetypes: 'archetypes', extensions: 'extensions' },
+};
+
+/** The reference kind of `key` in the map at `path`, if it holds one. */
+function referenceKind(doc: FcDocument, path: string[], key: string): RefKind | undefined {
+  const container = resolvePath(doc.grammar, path);
+  return container?.kind === 'map' ? REFERENCE_KEYS[container.block]?.[key] : undefined;
+}
+
+function nameItems(names: NameCandidate[], range: Range): CompletionItem[] {
+  return names.map((name, i) => ({
+    label: name.label,
+    kind: CompletionItemKind.Reference,
+    detail: name.detail,
+    sortText: String(i).padStart(4, '0'),
+    filterText: name.label,
+    textEdit: { range, newText: name.label },
+  }));
+}
 
 export const TRIGGER_CHARACTERS = [' ', '$'];
 
-export function complete(doc: FcDocument, position: Position, triggerCharacter?: string): CompletionItem[] {
+export function complete(doc: FcDocument, position: Position, triggerCharacter?: string, names?: NameProvider): CompletionItem[] {
   const lines = doc.text.split(/\r?\n/);
   const ctx = cursorContext(lines, position.line, position.character);
   if (!ctx) return [];
   const grammar = doc.grammar;
 
   if (ctx.kind === 'value') {
+    const range = { start: { line: position.line, character: ctx.start }, end: { line: position.line, character: ctx.end } };
+    const refKind = referenceKind(doc, ctx.path, ctx.key);
+    if (refKind) return names ? nameItems(names(refKind), range) : [];
     const spec = resolvePath(grammar, [...ctx.path, ctx.key]);
     const scalar = scalarOf(spec);
     if (!scalar?.values) return [];
-    const range = { start: { line: position.line, character: ctx.start }, end: { line: position.line, character: ctx.end } };
     return scalar.values.map((value, i) => ({
       label: value,
       kind: value.startsWith('$') ? CompletionItemKind.Variable : CompletionItemKind.EnumMember,
@@ -38,6 +75,12 @@ export function complete(doc: FcDocument, position: Position, triggerCharacter?:
 
   const container = resolvePath(grammar, ctx.path);
   const range = { start: { line: position.line, character: ctx.start }, end: position };
+
+  // `- ` in context.archetypes / context.extensions names a mapping
+  if (ctx.newItem && ctx.path.length >= 2) {
+    const refKind = referenceKind(doc, ctx.path.slice(0, -2), ctx.path[ctx.path.length - 2]);
+    if (refKind) return names ? nameItems(names(refKind), range) : [];
+  }
   const pad = ' '.repeat(Math.max(0, ctx.keyCol - ctx.lineIndent));
   const indent = (text: string) => text.replace(/\n/g, '\n' + pad);
   const items: CompletionItem[] = [];

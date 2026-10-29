@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`workspace index > reports the references of the library that resolve to nothing 1`] = `
+[
+  "model/admin_entry/org.highmed/person_data.v0.yml: No model mapping named \`CLUSTER.death_details.v1\` in the workspace.",
+  "projects/org.highmed/KDS/diagnose/KDS_diagnose.context.yaml: No extension mapping named \`KDS_Specimen\` in the workspace.",
+  "projects/org.highmed/KDS/person/person.context.yaml: No extension mapping named \`KDS_person_data.v0\` in the workspace.",
+  "projects/org.highmed/KDS/person/person.context.yaml: No model mapping named \`CLUSTER.death_details.v1\` in the workspace.",
+  "projects/org.highmed/KDS/person_pseudo/pseudo_person.context.yaml: No extension mapping named \`KDS_person_pseudo_cluster.v1\` in the workspace.",
+  "projects/org.highmed/KDS/todesursache/KDS_Todesursache.context.yaml: No model mapping named \`EVALUATION.cause_of_death\` in the workspace.",
+]
+`;
