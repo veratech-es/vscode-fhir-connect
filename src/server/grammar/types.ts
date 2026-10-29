@@ -52,6 +52,10 @@ export interface Grammar {
   /** block of the document root */
   root: string;
   blocks: Record<string, BlockSpec>;
+  /** engine that runs this version, named in messages about what it does */
+  engine?: string;
+  /** whether paths may go up with `^` (FHIR) and `../` (openEHR) */
+  pathOperators: boolean;
 }
 
 export const SPEC_SITE = 'https://sevkohler.github.io/FHIRconnect-spec/FHIRconnect/v1.0.0/';

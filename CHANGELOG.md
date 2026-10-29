@@ -1,6 +1,27 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.4.0 (unreleased)
+
+Grammar FHIRConnect v1.0.0 and the *Mapping Context* view (phase 4). Files in v0.9.0 keep working;
+each file is checked with the version its `grammar` line declares.
+
+- Grammar v1.0.0: `spec.unidirectional`, `link` (`meaning`, `type`), `slotContext`,
+  `context.scope`, `context.contexts`, `context.operational` and `$context` in manual values;
+  `fhirConfig.multiple` and `fhirConfig.condition` are no longer accepted.
+- Path operators of v1.0.0: `^` goes one element back up the parent's FHIR path and `../` one step
+  back up the parent's openEHR path. In v0.9.0 files they are reported.
+- References `slotContext`, `context.contexts` and `context.operational` take part in Go to
+  Definition, Find All References, rename, completion and unresolved-name warnings.
+- Slot models entered through `slotContext` get their path roots from the calling method; manual
+  paths accept `$fhirRoot` and `$openehrRoot`.
+- New diagnostics: `slotArchetype` together with `slotContext`, and `slotContext` with
+  `openehr: $reference`.
+- *FHIRConnect Mapping Context* view in the Explorer (`Ctrl+Alt+M`): the method at the cursor, its
+  parent chain, resolved FHIR and openEHR nodes, slot targets and the extensions that change it; the
+  file's profile, archetype, templates, extensions, contexts and the models that use it as a slot.
+- *FHIRConnect: New Mapping File* asks for the grammar version (v1.0.0 by default).
+
+## 0.3.0
 
 Path resolution against openEHR templates and FHIR R4 (phase 3), following the rules of the openFHIR
 engine.

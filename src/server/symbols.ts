@@ -54,13 +54,14 @@ function methods(items: Node[], toRange: ToRange): DocumentSymbol[] {
 function methodDetail(method: YAMLMap): string | undefined {
   const extension = scalarAt(method, 'extension');
   const slot = scalarAt(method, 'slotArchetype');
-  const parts = [extension && `extension: ${extension}`, slot && `slot: ${slot}`].filter(Boolean);
+  const slotContext = scalarAt(method, 'slotContext');
+  const parts = [extension && `extension: ${extension}`, slot && `slot: ${slot}`, slotContext && `context: ${slotContext}`].filter(Boolean);
   return parts.length ? parts.join(' · ') : undefined;
 }
 
 function contextChildren(context: YAMLMap, toRange: ToRange): DocumentSymbol[] {
   const children: DocumentSymbol[] = [];
-  for (const key of ['archetypes', 'extensions']) {
+  for (const key of ['archetypes', 'extensions', 'contexts', 'operational']) {
     const pair = pairAt(context, key);
     if (!pair || !isSeq(pair.value)) continue;
     const names = (pair.value.items as Node[]).filter(isScalar).map((item) => nodeSymbol(String(item.value), SymbolKind.File, item, toRange));

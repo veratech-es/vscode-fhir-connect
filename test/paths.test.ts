@@ -136,6 +136,99 @@ describe('FHIR paths', () => {
   });
 });
 
+describe('path resolution in the 1.0.0 mapping library', () => {
+  const V1 = join(__dirname, 'fixtures', 'mapping-lib-1.0.0');
+  it('resolves nearly every path, and reports the ones the templates or FHIR R4 do not have', () => {
+    const v1 = new WorkspaceIndex();
+    const v1Models = new ModelIndex();
+    for (const file of files(V1)) {
+      const text = readFileSync(file, 'utf8');
+      if (/\.ya?ml$/.test(file)) v1.set(uriOf(file), text);
+      else v1Models.set(uriOf(file), text);
+    }
+    const v1Resolver = new PathResolver(v1, v1Models);
+    let total = 0;
+    let known = 0;
+    const problems: string[] = [];
+    for (const e of [...v1.all()].sort((a, b) => a.uri.localeCompare(b.uri))) {
+      const resolution = v1Resolver.resolve(e);
+      const name = e.uri.slice(uriOf(V1).length + 1);
+      for (const note of resolution.notes) problems.push(`${name} ${note.code}: ${note.message}`);
+      for (const site of resolution.sites) {
+        total++;
+        if (site.result.known) known++;
+        if (site.problem) problems.push(`${name} ${site.problem.code} ${site.value}: ${site.problem.message}`);
+      }
+    }
+    expect(known / total).toBeGreaterThan(0.85);
+    expect(problems).toMatchSnapshot();
+  });
+});
+
+describe('path operators of grammar v1.0.0', () => {
+  const model = (version: string) => `grammar: FHIRConnect/v${version}
+type: model
+metadata:
+  name: OBSERVATION.operators.v1
+  version: 1.0.0
+spec:
+  system: FHIR
+  version: R4
+  openEhrConfig:
+    archetype: openEHR-EHR-OBSERVATION.laboratory_test_result.v1
+  fhirConfig:
+    structureDefinition: http://hl7.org/fhir/StructureDefinition/Encounter
+mappings:
+  - name: diagnosis
+    with:
+      fhir: $resource.diagnosis
+      openehr: $archetype/data[at0001]/events[at0002]/data[at0003]/items[at0005]
+    followedBy:
+      mappings:
+        - name: condition
+          with:
+            fhir: condition.reference
+            openehr: $reference
+          reference:
+            resourceType: Condition
+            mappings:
+              - name: slot
+                with:
+                  fhir: $fhirRoot
+                  openehr: ../items[at0005]
+                followedBy:
+                  mappings:
+                    - name: use
+                      with:
+                        fhir: ^^.use.coding
+                        openehr: $openehrRoot
+`;
+  const resolveModel = (version: string) => {
+    const operators = new WorkspaceIndex();
+    const uri = uriOf(join(CORPUS, `operators-${version}.yml`));
+    operators.set(uri, model(version));
+    const e = operators.get(uri)!;
+    return { e, resolution: new PathResolver(operators, models).resolve(e) };
+  };
+
+  it('goes back one element of the parent path for each ^ and ../', () => {
+    const { e, resolution } = resolveModel('1.0.0');
+    const use = siteAt(resolution, offsetOf(e, '^^.use.coding', 4))!;
+    expect(use.problem).toBeUndefined();
+    expect(use.result).toMatchObject({ known: true, types: ['Coding'], elementPath: 'CodeableConcept.coding' });
+    expect(use.steps[0]).toMatchObject({ text: '^^', after: { types: ['Encounter.diagnosis'] } });
+    const back = siteAt(resolution, offsetOf(e, '../items[at0005]', 5))!;
+    expect(back.problem).toBeUndefined();
+    expect(back.result).toMatchObject({ known: true, rmTypes: ['ELEMENT'] });
+    expect((back.result as { nodes: { label?: string }[] }).nodes[0].label).toBe('Labortest-Kategorie');
+  });
+
+  it('does not know them in grammar v0.9.0', () => {
+    const { resolution } = resolveModel('0.9.0');
+    expect(resolution.sites.filter((s) => s.problem).map((s) => s.value)).toEqual(['../items[at0005]', '^^.use.coding']);
+  });
+});
+
 describe('path resolution in the mapping library', () => {
   it('resolves nearly every path, and reports the ones the templates or FHIR R4 do not have', () => {
     let total = 0;

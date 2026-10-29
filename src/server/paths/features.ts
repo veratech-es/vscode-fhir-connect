@@ -255,6 +255,7 @@ export function pathCompletions(
   if (!roots) return undefined;
   const slot = slotAt(doc, resolution, offset, key);
   if (!slot) return undefined;
+  const operators = !!doc.supportedGrammar?.pathOperators;
   if (/^\$[A-Za-z]*$/.test(typed.text)) return undefined; // a variable being typed; the grammar completes those
 
   if (slot.side === 'fhir') {
@@ -262,11 +263,11 @@ export function pathCompletions(
     if (cast) {
       // the type of a cast being typed: the types the element before it can be cast to
       const head = typed.text.slice(0, cast.index);
-      const before = head === '' ? undefined : resolveFhirPath(head, typed.start, slot.parent.fhir, roots.resource, slot.variables);
+      const before = head === '' ? undefined : resolveFhirPath(head, typed.start, slot.parent.fhir, roots.resource, slot.variables, operators);
       if (!before || before.problem || !before.result.known) return undefined;
       return { items: castItems(before.result), start: typed.start + typed.text.length - cast[2].length, exclusive: true };
     }
-    const resolved = resolveFhirPath(typed.text, typed.start, slot.parent.fhir, roots.resource, slot.variables);
+    const resolved = resolveFhirPath(typed.text, typed.start, slot.parent.fhir, roots.resource, slot.variables, operators);
     const last = resolved.steps[resolved.steps.length - 1];
     const state = last ? last.before : resolved.base;
     const start = last ? last.span.start : typed.start + typed.text.length;
@@ -274,7 +275,7 @@ export function pathCompletions(
     if (!last && typed.text.trim() !== '' && !typed.text.endsWith('.')) return undefined;
     return { items: fhirItems(state), start };
   }
-  const resolved = resolveOpenEhrPath(typed.text, typed.start, slot.parent.openehr, roots, slot.variables, slot.openehrRoot);
+  const resolved = resolveOpenEhrPath(typed.text, typed.start, slot.parent.openehr, roots, slot.variables, slot.openehrRoot, operators);
   const last = resolved.steps[resolved.steps.length - 1];
   const state = last ? last.before : resolved.base;
   const start = last ? last.span.start : typed.start + typed.text.length;

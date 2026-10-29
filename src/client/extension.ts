@@ -1,7 +1,8 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient/node';
-import { mappingTemplate, type MappingKind } from './templates';
+import { MappingContextView } from './contextView';
+import { GRAMMAR_VERSIONS, mappingTemplate, type GrammarVersion, type MappingKind } from './templates';
 
 let client: LanguageClient | undefined;
 
@@ -38,6 +39,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerTextEditorCommand('fhirconnect.peekArchetype', (editor) => goToArchetype(editor, 'peek')),
   );
   await client.start();
+  new MappingContextView(client).register(context);
 }
 
 export async function deactivate(): Promise<void> {
@@ -73,6 +75,13 @@ async function newMapping(): Promise<void> {
   ];
   const picked = await vscode.window.showQuickPick(kinds, { title: 'New FHIRConnect mapping', placeHolder: 'Kind of mapping file' });
   if (!picked) return;
+  const versions: (vscode.QuickPickItem & { version: GrammarVersion })[] = GRAMMAR_VERSIONS.map((version) => ({
+    label: `v${version}`,
+    description: version === '1.0.0' ? 'the version of the specification and of the current mapping library' : 'the version the openFHIR engine runs',
+    version,
+  }));
+  const grammar = await vscode.window.showQuickPick(versions, { title: 'New FHIRConnect mapping', placeHolder: 'Grammar version' });
+  if (!grammar) return;
   const name = await vscode.window.showInputBox({
     title: 'New FHIRConnect mapping',
     prompt: picked.mappingKind === 'model' ? 'Mapping name, e.g. EVALUATION.problem_diagnosis.v1' : 'Mapping name',
@@ -81,5 +90,5 @@ async function newMapping(): Promise<void> {
   if (!name) return;
   const document = await vscode.workspace.openTextDocument({ language: 'yaml', content: '' });
   const editor = await vscode.window.showTextDocument(document);
-  await editor.insertSnippet(new vscode.SnippetString(mappingTemplate(picked.mappingKind, name.trim())));
+  await editor.insertSnippet(new vscode.SnippetString(mappingTemplate(picked.mappingKind, name.trim(), grammar.version)));
 }

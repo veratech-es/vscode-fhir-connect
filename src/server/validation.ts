@@ -154,10 +154,21 @@ class Validator {
     const warn = (message: string, code: string) =>
       this.problems.push({ start: anchor[0], end: anchor[1], message, severity: 'warning', code });
     if (blockName === 'method' && this.doc.fileType === 'extension' && depth === 0 && !present.has('extension')) {
-      warn('Methods of an extension file need `extension: add`, `append` or `overwrite`; the openFHIR engine fails on methods without it.', 'missing-extension');
+      const engine = this.grammar.engine ? `the ${this.grammar.engine} engine fails on methods without it` : 'methods without it are not applied';
+      warn(`Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; ${engine}.`, 'missing-extension');
     }
     if (blockName === 'method' && scalarValue(present.get('extension')) === 'append' && !present.has('appendTo')) {
       warn('`extension: append` needs `appendTo` with the name of the method to append to.', 'missing-append-to');
+    }
+    if (blockName === 'method' && present.has('slotArchetype') && present.has('slotContext')) {
+      warn('Use either `slotArchetype` or `slotContext`, not both.', 'conflicting-keys');
+    }
+    if (blockName === 'method' && present.has('slotContext')) {
+      const withMap = present.get('with')?.value;
+      const openehr = isMap(withMap) ? withMap.get('openehr') : undefined;
+      if (typeof openehr === 'string' && openehr.trim() === '$reference') {
+        warn('A `slotContext` with `openehr: $reference` would create a separate composition, which sub-contexts do not support; use `link` instead.', 'slot-context-reference');
+      }
     }
     if (blockName === 'condition') {
       if (present.has('targetAttribute') && present.has('targetAttributes')) {

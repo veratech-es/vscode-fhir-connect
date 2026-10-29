@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`mapping library 0.9.0 > only warns about things the openFHIR engine does not know 1`] = `
+exports[`mapping library '0.9.0' > only warns about things the grammar does not allow 1`] = `
 [
   "model/cluster/org.openehr/specimen.v1.yml: \`not in\` is not a valid value for \`operator\`. Expected \`one of\`, \`not of\`, \`empty\`, \`not empty\`, \`type\`.",
   "model/evaluation/org.openehr/vital_status.v1.yml: Empty item in \`mappings\`.",
@@ -8,5 +8,14 @@ exports[`mapping library 0.9.0 > only warns about things the openFHIR engine doe
   "projects/org.highmed/KDS/person/KDS_admin_entry_person.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; the openFHIR engine fails on methods without it.",
   "projects/org.highmed/KDS/person_pseudo/KDS_pseudo_admin_person.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; the openFHIR engine fails on methods without it.",
   "projects/org.highmed/KDS/vitalstatus/KDS_vitalsigns.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; the openFHIR engine fails on methods without it.",
+]
+`;
+
+exports[`mapping library '1.0.0' > only warns about things the grammar does not allow 1`] = `
+[
+  "model/composition/org.openehr/report-result.v1.Composition.yml: \`extension\` is only used in extension files, this is a model file.",
+  "model/evaluation/org.openehr/cause_of_death.v1.yml: \`extension\` is only used in extension files, this is a model file.",
+  "projects/org.highmed/KDS/person/KDS_admin_entry_person.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; methods without it are not applied.",
+  "projects/org.highmed/KDS/person_pseudo/KDS_pseudo_admin_person.yml: Methods of an extension file need \`extension: add\`, \`append\` or \`overwrite\`; methods without it are not applied.",
 ]
 `;

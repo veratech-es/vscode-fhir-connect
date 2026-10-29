@@ -1,9 +1,13 @@
 export type MappingKind = 'model' | 'extension' | 'context';
 
+/** Grammar versions a new file can be written in, newest first. */
+export const GRAMMAR_VERSIONS = ['1.0.0', '0.9.0'] as const;
+export type GrammarVersion = (typeof GRAMMAR_VERSIONS)[number];
+
 /** Snippet text for a new mapping file, following the layout of the FHIRConnect mapping library. */
-export function mappingTemplate(kind: MappingKind, name: string): string {
+export function mappingTemplate(kind: MappingKind, name: string, version: GrammarVersion = '1.0.0'): string {
   const header = [
-    'grammar: FHIRConnect/v0.9.0',
+    `grammar: FHIRConnect/v${version}`,
     `type: ${kind}`,
     'metadata:',
     `  name: ${escape(name)}`,
