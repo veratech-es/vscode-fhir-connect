@@ -12,6 +12,7 @@ Navigation between mapping files (phase 2), following the openFHIR IntelliJ plug
   `appendTo`.
 - Hover on a reference shows the file it points at.
 - Warnings for names and `appendTo` methods that do not exist in the workspace.
+- User guide (`docs/user-guide.md`) and cheat sheet (`docs/cheatsheet.md`) covering phases 1 and 2.
 
 ## 0.1.0
 
