@@ -7,6 +7,12 @@ This first version supports grammar **v0.9.0**, the version executed by the
 [openFHIR engine](https://github.com/medblocks/openFHIR). Files with another grammar version are
 recognised but not validated yet.
 
+## Documentation
+
+- [User guide](docs/user-guide.md): every feature in detail, settings, troubleshooting and the list of
+  diagnostics.
+- [Cheat sheet](docs/cheatsheet.md): keyboard shortcuts and features on one page.
+
 ## Features
 
 - **Validation** while you type: unknown keys (with a "did you mean" suggestion), missing required
@@ -81,6 +87,9 @@ npm test            # unit tests and the mapping library corpus
 ```
 
 Press F5 in VS Code with the *Run Extension* configuration to start an Extension Development Host.
+
+Every phase that adds or changes a feature updates the [user guide](docs/user-guide.md) and the
+[cheat sheet](docs/cheatsheet.md) in the same pull request.
 
 The extension is a thin client (`src/client`) that starts a language server (`src/server`):
 
