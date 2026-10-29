@@ -335,8 +335,9 @@ path completion, Go to Definition into the template and path warnings.
 | FHIR | The FHIR R4 (4.0.1) resources and data types, bundled with the extension | Nothing. `spec.fhirConfig.structureDefinition` picks the root resource. |
 | FHIR profiles | StructureDefinition `.json` files in the workspace | Optional. A profile URL in `structureDefinition` resolves to the type the profile constrains. |
 | openEHR | Operational templates (`.opt`, OPT 1.4 XML) in the workspace | Put the templates of your project somewhere in the workspace folder. |
+| openEHR archetypes | ADL 1.4 archetypes (`.adl`) in the workspace | Optional. Only for *Go to Archetype Definition* ([9.7](#97-go-to-the-archetype-adl)). |
 
-The extension scans the whole workspace for `.opt` files and for `.json` files that contain a
+The extension scans the whole workspace for `.opt` and `.adl` files and for `.json` files that contain a
 StructureDefinition, and follows changes to them. Web templates (`.json` from the openEHR web template
 format) are not read; export the OPT instead.
 
@@ -424,7 +425,36 @@ side, with `[]` when the element repeats (`CodeableConcept[]`). Turn them off wi
 that names a workspace profile it opens the StructureDefinition file. FHIR core types have no file to
 open.
 
-### 9.7 Path warnings
+### 9.7 Go to the archetype (ADL)
+
+`F12` goes to the node in the template (OPT). When the source archetypes (`.adl`, ADL 1.4) are also in
+the workspace, a second shortcut goes to the same node in the archetype instead:
+
+| Action | Windows / Linux | macOS |
+| --- | --- | --- |
+| Go to Archetype Definition | `Ctrl+Alt+F12` | `Cmd+Option+F12` |
+| Peek Archetype Definition | `Ctrl+Shift+Alt+F12` | `Cmd+Shift+Option+F12` |
+
+Both commands are also in the command palette (*FHIRConnect: Go to Archetype Definition*,
+*FHIRConnect: Peek Archetype Definition*), and the first one is in the editor context menu of mapping
+files.
+
+- On a segment of an openEHR path, the command opens the archetype that owns the node, at the node
+  (`ELEMENT[at0005]`). A slot step (`items[openEHR-EHR-CLUSTER.…]`) opens the archetype that fills
+  the slot, at its root.
+- On an RM attribute (`value`, `defining_code`) or a node without its own code, it goes to the
+  nearest coded node before it.
+- On `spec.openEhrConfig.archetype`, it opens the archetype at its root node.
+- The archetype is found by its id (the `archetype_id` in the ADL header), wherever the file is in the
+  workspace. When no `.adl` with that id exists, a message says so.
+
+The at-codes are taken from the template, so an archetype revision that renumbered its nodes can
+land on a different node, or on the root when the code is missing.
+
+To change the shortcuts, open *File* → *Preferences* → *Keyboard Shortcuts* (`Ctrl+K Ctrl+S`) and search
+for `fhirconnect`.
+
+### 9.8 Path warnings
 
 A warning marks the first segment that does not resolve; the rest of the path is not checked. See the
 [diagnostic reference](#12-diagnostic-reference) for the codes. Turn path checks off, while keeping
@@ -453,6 +483,7 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | No hover or hint on openEHR paths | A `.opt` containing the model's archetype is in the workspace (look for the `archetype-not-in-templates` information). Web templates are not read. |
 | No hover on a FHIR path after a profile URL | The StructureDefinition `.json` is in the workspace and its `url` matches. |
 | A path warning you believe is wrong | Check the segment in the template (`F12` on the previous segment) and the engine rules in [9.2](#92-how-a-path-is-read). |
+| `Ctrl+Alt+F12` says no ADL archetype was found | The `.adl` file (ADL 1.4; ADL 2 `.adls` is not read) is in the workspace and its header names the same archetype id. |
 | Inlay hints clutter the editor | Set `fhirconnect.inlayHints.enable` to `false`. |
 | A new version does not show up | Reload the window (`Ctrl+Shift+P` → *Developer: Reload Window*). |
 | Something looks wrong | Set `fhirconnect.trace.server` to `verbose` and look at *View* → *Output* → *FHIRConnect*. |

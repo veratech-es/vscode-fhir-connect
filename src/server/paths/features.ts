@@ -108,6 +108,42 @@ export function pathDefinitions(site: PathSite, offset: number): Target[] {
   return state.nodes.map((node) => ({ uri: node.template.uri, offset: node.offset }));
 }
 
+/**
+ * The nodes of the ADL archetypes a path step stands for. An RM attribute past the constrained nodes
+ * goes to the last node before it; a node without a code, to its nearest coded ancestor.
+ */
+export function archetypeDefinitions(site: PathSite, offset: number, models: ModelIndex): Target[] {
+  const step = stepAt(site, offset);
+  const states = step ? site.steps.slice(0, site.steps.indexOf(step) + 1).map((s) => s.after).reverse() : [site.result, ...site.steps.map((s) => s.after).reverse()];
+  const state = [...states, site.base].find((s) => s.known && !isFhir(s) && s.nodes.length > 0) as OpenEhrState | undefined;
+  return state ? adlTargets(state.nodes, models) : [];
+}
+
+/** The ADL archetype root of `spec.openEhrConfig.archetype`. */
+export function archetypeFileAt(doc: FcDocument, models: ModelIndex, offset: number): Target[] {
+  const root = doc.yaml.contents;
+  if (!isMap(root)) return [];
+  const spec = root.get('spec');
+  const config = isMap(spec) ? spec.get('openEhrConfig') : undefined;
+  const archetype = isMap(config) ? scalarAt(config as YAMLMap, 'archetype') : undefined;
+  if (!archetype || offset < archetype.span.start || offset > archetype.span.end) return [];
+  return models.archetypeFiles(archetype.value.trim()).map((a) => ({ uri: a.uri, offset: a.rootOffset }));
+}
+
+function adlTargets(nodes: OptNode[], models: ModelIndex): Target[] {
+  const targets = new Map<string, Target>();
+  for (let node of nodes) {
+    while (node.kind !== 'root' && !/^at[0-9]/.test(node.nodeId) && node.parent?.owner) node = node.parent.owner;
+    const id = node.kind === 'root' ? node.archetypeId : node.owner?.archetypeId;
+    if (!id) continue;
+    for (const archetype of models.archetypeFiles(id)) {
+      const offset = node.kind === 'root' ? archetype.rootOffset : archetype.nodes.get(node.nodeId) ?? archetype.rootOffset;
+      targets.set(`${archetype.uri}#${offset}`, { uri: archetype.uri, offset });
+    }
+  }
+  return [...targets.values()];
+}
+
 // ---------------------------------------------------------------------------------------------
 // Completion
 

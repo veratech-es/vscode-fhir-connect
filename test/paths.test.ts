@@ -7,13 +7,14 @@ import { findWorkspaceFiles } from '../src/server/scan';
 import { castType, fhirElement } from '../src/server/models/fhir';
 import { parseOpt } from '../src/server/models/opt';
 import { rmAttribute } from '../src/server/models/rm';
-import { modelReferenceAt, pathCompletions, pathDefinitions, pathHover, pathInlayHints, siteAt } from '../src/server/paths/features';
+import { archetypeDefinitions, archetypeFileAt, modelReferenceAt, pathCompletions, pathDefinitions, pathHover, pathInlayHints, siteAt } from '../src/server/paths/features';
 import { PathResolver, resolveFhirPath, type FhirState } from '../src/server/paths/resolver';
 import { openEhrSteps } from '../src/server/paths/syntax';
 import { WorkspaceIndex, type FileEntry } from '../src/server/workspace';
 
 const CORPUS = join(__dirname, 'fixtures', 'mapping-lib-0.9.0');
 const TEMPLATES = join(CORPUS, 'projects', 'org.highmed', 'KDS', 'resources', 'openehr', 'templates');
+const ADL = join(__dirname, 'fixtures', 'ckm-archetypes');
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -191,6 +192,22 @@ describe('path resolution in the mapping library', () => {
     const [target] = pathDefinitions(site, offsetOf(lab, 'items[at0005]', 2));
     expect(short(target.uri)).toBe('projects/org.highmed/KDS/resources/openehr/templates/KDS_Laborbericht.opt');
     expect(readFileSync(join(TEMPLATES, 'KDS_Laborbericht.opt'), 'utf8').slice(target.offset, target.offset + 9)).toBe('<children');
+  });
+
+  it('opens the ADL archetype at the node of a path step', () => {
+    const archetypes = new ModelIndex();
+    for (const file of [...files(TEMPLATES), ...files(ADL)]) archetypes.set(uriOf(file), readFileSync(file, 'utf8'));
+    const lab = entry(LAB);
+    const adl = readFileSync(join(ADL, 'openEHR-EHR-OBSERVATION.laboratory_test_result.v1.adl'), 'utf8');
+    const site = siteAt(new PathResolver(index, archetypes).resolve(lab), offsetOf(lab, 'data[at0003]/items[at0005]', 2))!;
+    const [node] = archetypeDefinitions(site, offsetOf(lab, 'items[at0005]', 2), archetypes);
+    expect(node.uri).toBe(uriOf(join(ADL, 'openEHR-EHR-OBSERVATION.laboratory_test_result.v1.adl')));
+    expect(adl.slice(node.offset, node.offset + 15)).toBe('ELEMENT[at0005]');
+    const [tree] = archetypeDefinitions(site, offsetOf(lab, 'data[at0003]', 2), archetypes);
+    expect(adl.slice(tree.offset, tree.offset + 17)).toBe('ITEM_TREE[at0003]');
+    const [root] = archetypeFileAt(lab.doc, archetypes, offsetOf(lab, 'openEHR-EHR-OBSERVATION.laboratory_test_result.v1', 3));
+    expect(adl.slice(root.offset, root.offset + 19)).toBe('OBSERVATION[at0000]');
+    expect(archetypeDefinitions(site, offsetOf(lab, 'items[at0005]', 2), models)).toEqual([]);
   });
 
   it('shows what `with` paths resolve to as inlay hints', () => {

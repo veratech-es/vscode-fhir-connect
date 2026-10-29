@@ -9,6 +9,7 @@ import {
   TextDocumentSyncKind,
   type Diagnostic,
   type Location as LspLocation,
+  type TextDocumentPositionParams,
   type TextEdit,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -22,7 +23,7 @@ import { findWorkspaceFiles, isModelFile } from './scan';
 import { rangeOf, REF_TARGET, WorkspaceIndex, type FileEntry, type Location } from './workspace';
 import { ModelIndex } from './models';
 import { PathResolver } from './paths/resolver';
-import { modelReferenceAt, pathCompletions, pathDefinitions, pathHover, pathInlayHints, siteAt, type Target } from './paths/features';
+import { archetypeDefinitions, archetypeFileAt, modelReferenceAt, pathCompletions, pathDefinitions, pathHover, pathInlayHints, siteAt, type Target } from './paths/features';
 import { lineInfo } from './cursor';
 
 interface Settings {
@@ -273,6 +274,15 @@ connection.onDefinition((params) => {
   if (ref) return index.targets(found.entry, ref).map(toLsp);
   const site = siteAt(resolver.resolve(found.entry), found.offset);
   const targets = site ? pathDefinitions(site, found.offset) : modelReferenceAt(found.doc, models, found.offset)?.targets ?? [];
+  return targets.map(modelLocation);
+});
+
+/** Go to Archetype Definition: the node of the ADL archetype a path step stands for. */
+connection.onRequest('fhirconnect/archetypeDefinition', (params: TextDocumentPositionParams) => {
+  const found = at(params);
+  if (!found || !indexReady) return [];
+  const site = siteAt(resolver.resolve(found.entry), found.offset);
+  const targets = site?.side === 'openehr' ? archetypeDefinitions(site, found.offset, models) : archetypeFileAt(found.doc, models, found.offset);
   return targets.map(modelLocation);
 });
 

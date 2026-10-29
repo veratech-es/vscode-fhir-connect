@@ -19,6 +19,8 @@ engine.
   FHIR elements and the casts of choice elements.
 - Go to Definition from an openEHR path step to its node in the template, from `context.template.id`
   to the template, and from a profile URL to its StructureDefinition.
+- *FHIRConnect: Go to Archetype Definition* (`Ctrl+Alt+F12`) and *Peek Archetype Definition*
+  (`Ctrl+Shift+Alt+F12`): the same node in the ADL 1.4 archetype (`.adl`) of the workspace.
 - Settings `fhirconnect.validation.paths` and `fhirconnect.inlayHints.enable`.
 
 ## 0.2.0

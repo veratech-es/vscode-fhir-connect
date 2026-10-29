@@ -1,3 +1,4 @@
+import { parseAdl, type Archetype } from './adl';
 import { CORE_PREFIX, coreType, parseProfile, type Profile } from './fhir';
 import { parseOpt, type OptNode, type Template } from './opt';
 
@@ -5,12 +6,13 @@ import { parseOpt, type OptNode, type Template } from './opt';
 export class ModelIndex {
   private readonly templates = new Map<string, Template>();
   private readonly profiles = new Map<string, Profile>();
+  private readonly adl = new Map<string, Archetype>();
   private readonly lines = new Map<string, number[]>();
   private sorted: Template[] | undefined;
   /** bumped on every change, so that resolutions built on older models can be dropped */
   generation = 0;
 
-  /** Indexes a `.opt` or `.json` file; other content is dropped. Returns true when the file is a model. */
+  /** Indexes a `.opt`, `.adl` or `.json` file; other content is dropped. Returns true when the file is a model. */
   set(uri: string, text: string): boolean {
     this.delete(uri);
     if (/\.opt$/i.test(uri)) {
@@ -19,6 +21,12 @@ export class ModelIndex {
       this.sorted = undefined;
       if (template) this.lines.set(uri, lineStarts(text));
       return !!template;
+    }
+    if (/\.adl$/i.test(uri)) {
+      const archetype = parseAdl(uri, text);
+      if (archetype) this.adl.set(uri, archetype);
+      if (archetype) this.lines.set(uri, lineStarts(text));
+      return !!archetype;
     }
     if (/\.json$/i.test(uri)) {
       const profile = parseProfile(uri, text);
@@ -32,6 +40,7 @@ export class ModelIndex {
   delete(uri: string): void {
     this.templates.delete(uri);
     this.profiles.delete(uri);
+    this.adl.delete(uri);
     this.lines.delete(uri);
     this.sorted = undefined;
     this.generation++;
@@ -65,6 +74,11 @@ export class ModelIndex {
   /** Every archetype root, in any template, of the archetype `id`. */
   archetypeRoots(id: string): OptNode[] {
     return this.allTemplates().flatMap((t) => t.archetypes.get(id) ?? []);
+  }
+
+  /** The ADL archetypes of the workspace with this id, by file name order. */
+  archetypeFiles(id: string): Archetype[] {
+    return [...this.adl.values()].filter((a) => a.id === id).sort((a, b) => a.uri.localeCompare(b.uri));
   }
 
   profileByUrl(url: string): Profile | undefined {

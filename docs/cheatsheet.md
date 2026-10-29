@@ -16,6 +16,8 @@ FHIR R4 is bundled.
 | Show hover | `Ctrl+K Ctrl+I` | `Cmd+K Cmd+I` | keys, variables, references, path segments |
 | Go to Definition | `F12` or `Ctrl+click` | `F12` or `Cmd+click` | references, `appendTo`, openEHR path segments, `template.id`, profile URLs |
 | Peek Definition | `Alt+F12` | `Option+F12` | same as Go to Definition |
+| Go to Archetype Definition (ADL) | `Ctrl+Alt+F12` | `Cmd+Option+F12` | openEHR path segments, `openEhrConfig.archetype` |
+| Peek Archetype Definition (ADL) | `Ctrl+Shift+Alt+F12` | `Cmd+Shift+Option+F12` | same |
 | Show inlay hints while held (*offUnlessPressed*) | `Ctrl+Alt` | `Ctrl+Option` | path hints |
 | Go back | `Alt+Left` | `Ctrl+-` | after a jump |
 | Find All References (peek) | `Shift+F12` | `Shift+F12` | `metadata.name`, references |
@@ -51,6 +53,7 @@ FHIR R4 is bundled.
 | Inlay hints | Grey hint after each `with.fhir` / `with.openehr` line | 3 |
 | Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)`, types inside `as(` | 3 |
 | Jump into the template | `F12` on an openEHR path segment or `context.template.id` | 3 |
+| Jump into the archetype | `Ctrl+Alt+F12` on an openEHR path segment (needs the `.adl` in the workspace) | 3 |
 | Path warnings | Automatic warning on the first segment that does not resolve | 3 |
 
 ## Reference sites

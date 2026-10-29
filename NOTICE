@@ -9,6 +9,11 @@ licensed under the Apache License, Version 2.0. Its
 projects/org.highmed/KDS/resources/openehr/templates folder holds the KDS operational
 templates of the same library (main branch), under the same license.
 
+test/fixtures/ckm-archetypes contains four archetypes of the openEHR Clinical Knowledge
+Manager (https://github.com/openEHR/CKM-mirror), licensed under the Creative Commons
+Attribution-ShareAlike 3.0 Unported license (see the LICENSE file in that folder). They
+are test data only and are not part of the packaged extension.
+
 src/server/models/fhir-r4.json is generated from the FHIR R4 (4.0.1) definitions
 published by HL7 International (http://hl7.org/fhir/R4/downloads.html), which are
 released under the Creative Commons "No Rights Reserved" (CC0) license. FHIR is a

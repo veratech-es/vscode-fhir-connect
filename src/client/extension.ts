@@ -19,17 +19,50 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ],
     synchronize: {
       configurationSection: 'fhirconnect',
-      // mapping files, operational templates and StructureDefinitions
-      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{yml,yaml,opt,json}'),
+      // mapping files, operational templates, ADL archetypes and StructureDefinitions
+      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{yml,yaml,opt,adl,json}'),
     },
   };
+  // `fhirconnect.isMapping` limits the archetype commands to mapping files
+  const updateContext = (editor: vscode.TextEditor | undefined) =>
+    void vscode.commands.executeCommand('setContext', 'fhirconnect.isMapping', !!editor && /^grammar:\s*["']?FHIRConnect\//m.test(editor.document.getText()));
+  updateContext(vscode.window.activeTextEditor);
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(updateContext),
+    vscode.workspace.onDidSaveTextDocument((d) => d === vscode.window.activeTextEditor?.document && updateContext(vscode.window.activeTextEditor)),
+  );
   client = new LanguageClient('fhirconnect', 'FHIRConnect', serverOptions, clientOptions);
-  context.subscriptions.push(vscode.commands.registerCommand('fhirconnect.newMapping', newMapping));
+  context.subscriptions.push(
+    vscode.commands.registerCommand('fhirconnect.newMapping', newMapping),
+    vscode.commands.registerTextEditorCommand('fhirconnect.goToArchetype', (editor) => goToArchetype(editor, 'goto')),
+    vscode.commands.registerTextEditorCommand('fhirconnect.peekArchetype', (editor) => goToArchetype(editor, 'peek')),
+  );
   await client.start();
 }
 
 export async function deactivate(): Promise<void> {
   await client?.stop();
+}
+
+/** Opens the ADL archetype at the node the openEHR path under the cursor stands for. */
+async function goToArchetype(editor: vscode.TextEditor, mode: 'goto' | 'peek'): Promise<void> {
+  if (!client) return;
+  const position = editor.selection.active;
+  const result = await client.sendRequest<{ uri: string; range: { start: { line: number; character: number } } }[]>('fhirconnect/archetypeDefinition', {
+    textDocument: { uri: editor.document.uri.toString() },
+    position: { line: position.line, character: position.character },
+  });
+  if (result.length === 0) {
+    void vscode.window.showInformationMessage(
+      'No ADL archetype found for this position. Place the cursor on an openEHR path or on spec.openEhrConfig.archetype, and keep the .adl files in the workspace.',
+    );
+    return;
+  }
+  const locations = result.map((l) => {
+    const start = new vscode.Position(l.range.start.line, l.range.start.character);
+    return new vscode.Location(vscode.Uri.parse(l.uri), new vscode.Range(start, start));
+  });
+  await vscode.commands.executeCommand('editor.action.goToLocations', editor.document.uri, position, locations, mode, 'No ADL archetype found');
 }
 
 async function newMapping(): Promise<void> {

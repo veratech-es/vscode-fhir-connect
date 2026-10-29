@@ -12,12 +12,12 @@ export interface FoundFile {
   text: string;
 }
 
-/** True for files that may be operational templates or StructureDefinitions. */
+/** True for files that may be operational templates, ADL archetypes or StructureDefinitions. */
 export function isModelFile(path: string): boolean {
-  return /\.(opt|json)$/i.test(path);
+  return /\.(opt|adl|json)$/i.test(path);
 }
 
-/** Below `root`: the FHIRConnect mapping files, and the operational templates and StructureDefinitions. */
+/** Below `root`: the FHIRConnect mapping files, and the operational templates, ADL archetypes and StructureDefinitions. */
 export async function findWorkspaceFiles(root: string): Promise<{ mappings: FoundFile[]; models: FoundFile[] }> {
   const mappings: FoundFile[] = [];
   const models: FoundFile[] = [];
@@ -45,7 +45,7 @@ export async function findWorkspaceFiles(root: string): Promise<{ mappings: Foun
         try {
           if (/\.json$/i.test(entry.name) && (await stat(path)).size > MAX_JSON_BYTES) continue;
           const text = await readFile(path, 'utf8');
-          if (/\.opt$/i.test(entry.name) || text.includes('"StructureDefinition"')) models.push({ path, text });
+          if (/\.(opt|adl)$/i.test(entry.name) || text.includes('"StructureDefinition"')) models.push({ path, text });
         } catch {
           // unreadable files are skipped
         }

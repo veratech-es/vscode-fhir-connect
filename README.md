@@ -58,6 +58,8 @@ recognised but not validated yet.
     attributes, FHIR elements and `as(T)` casts.
   - **Go to Definition** from an openEHR segment or `context.template.id` into the template, and from
     a profile URL into the StructureDefinition.
+  - **Go to Archetype Definition** (Ctrl+Alt+F12, peek with Ctrl+Shift+Alt+F12) opens the same node
+    in the ADL 1.4 archetype (`.adl`) when the archetypes are in the workspace.
   - **Warnings** on the first segment that does not resolve, and on `overwrite` methods that replace
     nothing.
 - **New mapping file** command (*FHIRConnect: New Mapping File*) for model, extension and context
@@ -114,7 +116,7 @@ The extension is a thin client (`src/client`) that starts a language server (`sr
 | `server/validation.ts` | Walks the YAML tree against the grammar. |
 | `server/cursor.ts` | Works out the block under the cursor from indentation, so completion works in files that do not parse yet. |
 | `server/workspace.ts`, `scan.ts` | The workspace index: names, references and methods of every mapping file, and how a name resolves. |
-| `server/models` | The FHIR R4 index (`fhir-r4.json`), StructureDefinition profiles, the OPT parser and the openEHR RM classes. |
+| `server/models` | The FHIR R4 index (`fhir-r4.json`), StructureDefinition profiles, the OPT and ADL readers and the openEHR RM classes. |
 | `server/paths` | Path syntax, the resolver (engine semantics per method) and the path features: hover, hints, completion, definition. |
 | `server/completion.ts`, `hover.ts`, `symbols.ts` | The language features. |
 

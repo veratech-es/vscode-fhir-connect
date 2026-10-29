@@ -34,6 +34,16 @@
         "command": "fhirconnect.newMapping",
         "title": "New Mapping File",
         "category": "FHIRConnect"
+      },
+      {
+        "command": "fhirconnect.goToArchetype",
+        "title": "Go to Archetype Definition",
+        "category": "FHIRConnect"
+      },
+      {
+        "command": "fhirconnect.peekArchetype",
+        "title": "Peek Archetype Definition",
+        "category": "FHIRConnect"
       }
     ],
     "configuration": {
@@ -65,6 +75,39 @@
           "description": "Traces the communication between VS Code and the FHIRConnect language server."
         }
       }
+    },
+    "keybindings": [
+      {
+        "command": "fhirconnect.goToArchetype",
+        "key": "ctrl+alt+f12",
+        "mac": "cmd+alt+f12",
+        "when": "editorTextFocus && fhirconnect.isMapping"
+      },
+      {
+        "command": "fhirconnect.peekArchetype",
+        "key": "ctrl+shift+alt+f12",
+        "mac": "cmd+shift+alt+f12",
+        "when": "editorTextFocus && fhirconnect.isMapping"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "fhirconnect.goToArchetype",
+          "when": "fhirconnect.isMapping",
+          "group": "navigation@1.5"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "fhirconnect.goToArchetype",
+          "when": "fhirconnect.isMapping"
+        },
+        {
+          "command": "fhirconnect.peekArchetype",
+          "when": "fhirconnect.isMapping"
+        }
+      ]
     }
   },
   "scripts": {
