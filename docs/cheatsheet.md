@@ -1,19 +1,24 @@
 # FHIRConnect for VS Code: cheat sheet
 
-Version 0.2.0 (phases 1 and 2). The [user guide](user-guide.md) explains each feature in detail.
+Version 0.3.0 (phases 1 to 3). The [user guide](user-guide.md) explains each feature in detail.
 
 The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` line.
+Path features (phase 3) also need the operational templates (`.opt`) somewhere in the workspace;
+FHIR R4 is bundled.
 
 ## Keyboard shortcuts
 
 | Action | Windows / Linux | macOS | Works on |
 | --- | --- | --- | --- |
-| Open completion | `Ctrl+Space` | `Ctrl+Space` | keys, values, `$` variables, mapping names |
+| Open completion | `Ctrl+Space` | `Ctrl+Space` | keys, values, `$` variables, mapping names, path segments |
 | Show or hide completion details | `Ctrl+Space` (list open) | `Ctrl+Space` (list open) | completion list |
 | Next / previous snippet placeholder | `Tab` / `Shift+Tab` | `Tab` / `Shift+Tab` | inserted snippets |
-| Show hover | `Ctrl+K Ctrl+I` | `Cmd+K Cmd+I` | keys, variables, references |
-| Go to Definition | `F12` or `Ctrl+click` | `F12` or `Cmd+click` | references, `appendTo` |
-| Peek Definition | `Alt+F12` | `Option+F12` | references, `appendTo` |
+| Show hover | `Ctrl+K Ctrl+I` | `Cmd+K Cmd+I` | keys, variables, references, path segments |
+| Go to Definition | `F12` or `Ctrl+click` | `F12` or `Cmd+click` | references, `appendTo`, openEHR path segments, `template.id`, profile URLs |
+| Peek Definition | `Alt+F12` | `Option+F12` | same as Go to Definition |
+| Go to Archetype Definition (ADL) | `Ctrl+Alt+F12` | `Cmd+Option+F12` | openEHR path segments, `openEhrConfig.archetype` |
+| Peek Archetype Definition (ADL) | `Ctrl+Shift+Alt+F12` | `Cmd+Shift+Option+F12` | same |
+| Show inlay hints while held (*offUnlessPressed*) | `Ctrl+Alt` | `Ctrl+Option` | path hints |
 | Go back | `Alt+Left` | `Ctrl+-` | after a jump |
 | Find All References (peek) | `Shift+F12` | `Shift+F12` | `metadata.name`, references |
 | Find All References (panel) | `Shift+Alt+F12` | `Shift+Option+F12` | `metadata.name`, references |
@@ -44,6 +49,12 @@ The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConn
 | Name completion | After `slotArchetype:`, `extends:`, `start:`, `appendTo:`, `- ` in `archetypes` / `extensions` | 2 |
 | Reference hover | Mouse over a reference: target file with link | 2 |
 | Unresolved names | Automatic warning on names no file declares | 2 |
+| Path hover | Mouse over a path segment: node label, RM type, cardinality, template / FHIR type | 3 |
+| Inlay hints | Grey hint after each `with.fhir` / `with.openehr` line | 3 |
+| Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)`, types inside `as(` | 3 |
+| Jump into the template | `F12` on an openEHR path segment or `context.template.id` | 3 |
+| Jump into the archetype | `Ctrl+Alt+F12` on an openEHR path segment (needs the `.adl` in the workspace) | 3 |
+| Path warnings | Automatic warning on the first segment that does not resolve | 3 |
 
 ## Reference sites
 
@@ -73,9 +84,26 @@ several files match, the one in the nearest folder wins.
 
 Quote values YAML would read as numbers or booleans: `criteria: "524"`.
 
+## Path roots
+
+| Path | Starts from |
+| --- | --- |
+| `$resource.x` | root resource (`structureDefinition`) |
+| `$fhirRoot.x`, `x` | parent method's FHIR path (`parent.x`) |
+| `$archetype/x` | archetype root |
+| `$composition/x` | template's root COMPOSITION |
+| `$openehrRoot/x`, `x` | parent method's openEHR path (`parent/x`) |
+| `$reference` | parent's openEHR context; FHIR side continues in the referenced resource |
+| `…\|code` | the part after `\|` is not checked |
+
+In a slot model, `$resource` / `$archetype` are the calling method's paths. ELEMENT→`value` and
+DV_CODED_TEXT→`defining_code` may be left out, as in the engine.
+
 ## Settings
 
 | Setting | Default |
 | --- | --- |
 | `fhirconnect.validation.enable` | `true` |
+| `fhirconnect.validation.paths` | `true` |
+| `fhirconnect.inlayHints.enable` | `true` |
 | `fhirconnect.trace.server` | `off` |

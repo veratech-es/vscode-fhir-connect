@@ -4,6 +4,7 @@ test/**
 node_modules/**
 **/*.map
 esbuild.mjs
+scripts/**
 tsconfig.json
 vitest.config.*
 .gitignore
