@@ -214,7 +214,7 @@ export function pathCompletions(
   offset: number,
   key: string,
   typed: { text: string; start: number },
-): { items: CompletionItem[]; start: number } | undefined {
+): { items: CompletionItem[]; start: number; exclusive?: boolean } | undefined {
   const roots = resolution.roots;
   if (!roots) return undefined;
   const slot = slotAt(doc, resolution, offset, key);
@@ -222,6 +222,14 @@ export function pathCompletions(
   if (/^\$[A-Za-z]*$/.test(typed.text)) return undefined; // a variable being typed; the grammar completes those
 
   if (slot.side === 'fhir') {
+    const cast = /(?:^|\.)\s*(as|ofType)\(\s*(\w*)$/.exec(typed.text);
+    if (cast) {
+      // the type of a cast being typed: the types the element before it can be cast to
+      const head = typed.text.slice(0, cast.index);
+      const before = head === '' ? undefined : resolveFhirPath(head, typed.start, slot.parent.fhir, roots.resource, slot.variables);
+      if (!before || before.problem || !before.result.known) return undefined;
+      return { items: castItems(before.result), start: typed.start + typed.text.length - cast[2].length, exclusive: true };
+    }
     const resolved = resolveFhirPath(typed.text, typed.start, slot.parent.fhir, roots.resource, slot.variables);
     const last = resolved.steps[resolved.steps.length - 1];
     const state = last ? last.before : resolved.base;
@@ -237,6 +245,17 @@ export function pathCompletions(
   if (!state.known || (resolved.problem && resolved.problem.start < start)) return undefined;
   if (!last && typed.text.trim() !== '' && !typed.text.endsWith('/')) return undefined;
   return { items: openEhrItems(state), start };
+}
+
+function castItems(state: FhirState): CompletionItem[] {
+  const types = new Set(state.types);
+  for (const target of state.targets ?? []) types.add(target);
+  return [...types].map((type, i) => ({
+    label: type,
+    kind: CompletionItemKind.Class,
+    detail: state.targets?.includes(type) && !state.types.includes(type) ? `resource ${state.elementPath ?? state.path} may refer to` : `type of ${state.elementPath ?? state.path}`,
+    sortText: String(i).padStart(4, '0'),
+  }));
 }
 
 function fhirItems(state: FhirState): CompletionItem[] {

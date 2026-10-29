@@ -78,6 +78,7 @@ export function fhirConforms(type: string, ancestor: string): boolean {
  * as the HAPI class names the openFHIR engine accepts (`DateTimeType`, `StringType`, `Boolean`).
  */
 export function castType(name: string): string | undefined {
+  if (!name) return undefined;
   if (coreType(name)) return name;
   const lower = name[0].toLowerCase() + name.slice(1);
   if (coreType(lower)?.kind === 'primitive') return lower;

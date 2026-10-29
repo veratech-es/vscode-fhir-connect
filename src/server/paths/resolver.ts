@@ -558,6 +558,7 @@ function fhirFunction(state: FhirState, part: FhirStep, path: string): { state: 
   switch (part.name) {
     case 'as':
     case 'ofType': {
+      if (args === '') return { state: { ...UNKNOWN_FHIR, path }, problem: `\`${part.name}()\` needs a type, e.g. \`${part.name}(${state.types[0] ?? 'string'})\`.`, code: 'unknown-fhir-type' };
       const type = castType(args);
       if (!type) return { state: UNKNOWN_FHIR, problem: `\`${args}\` is not a FHIR R4 type.`, code: 'unknown-fhir-type' };
       const fits = state.types.some((t) => t === type || fhirConforms(type, t) || fhirConforms(t, type));

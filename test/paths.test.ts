@@ -125,6 +125,7 @@ describe('FHIR paths', () => {
     expect(unknown.problem).toMatchObject({ start: 25, end: 32, code: 'unknown-fhir-element' });
     expect(unknown.problem?.message).toBe('`codings` is not an element of `CodeableConcept`.');
     expect(resolveFhirPath('code.as(Quantity)', 0, condition, condition, true).problem?.code).toBe('impossible-fhir-type');
+    expect(resolveFhirPath('subject.as()', 0, condition, condition, true).problem?.code).toBe('unknown-fhir-type');
   });
 
   it('stops checking at functions it does not know', () => {
@@ -234,5 +235,12 @@ describe('path completion', () => {
     expect(found.items.slice(0, 2).map((i) => i.label)).toEqual(['as(dateTime)', 'as(Period)']);
     const period = completeAt(LAB, 'fhir: "effective.as(Period)"', 'fhir', 'effective.as(Period).')!;
     expect(period.items.map((i) => i.label)).toEqual(expect.arrayContaining(['start', 'end']));
+  });
+
+  it('offers the types of a cast being typed, and the resources a Reference may point at', () => {
+    const found = completeAt(LAB, 'fhir: "effective.as(Period)"', 'fhir', '$resource.encounter.as(R')!;
+    expect(found).toMatchObject({ exclusive: true });
+    expect(found.items.map((i) => i.label)).toEqual(['Reference', 'Encounter']);
+    expect(completeAt(LAB, 'fhir: "effective.as(Period)"', 'fhir', 'effective.as(')!.items.map((i) => i.label)).toEqual(['dateTime', 'Period']);
   });
 });

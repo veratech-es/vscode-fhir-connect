@@ -216,23 +216,25 @@ connection.onCompletion((params) => {
     return index.candidates(kind, found.entry).map((e) => ({ label: e.name!, detail: relativePath(e.uri) }));
   };
   const items = complete(found.doc, params.position, params.context?.triggerCharacter, names);
-  const paths = indexReady ? pathItems(found.document, found.doc, found.entry, params.position) : [];
-  return [...paths, ...items];
+  const paths = indexReady ? pathItems(found.document, found.doc, found.entry, params.position) : undefined;
+  if (paths?.exclusive) return paths.items;
+  return [...(paths?.items ?? []), ...items];
 });
 
 /** Completion of the next step of the path typed at `position`. */
 function pathItems(document: TextDocument, doc: FcDocument, entry: FileEntry, position: { line: number; character: number }) {
   const line = document.getText({ start: { line: position.line, character: 0 }, end: position });
   const info = lineInfo(line);
-  if (!info?.key || info.valueCol === undefined) return [];
+  if (!info?.key || info.valueCol === undefined) return undefined;
   const raw = line.slice(info.valueCol);
   const quote = /^["']/.test(raw) ? 1 : 0;
   const lineStart = document.offsetAt({ line: position.line, character: 0 });
   const typed = { text: raw.slice(quote), start: lineStart + info.valueCol + quote };
   const found = pathCompletions(doc, resolver.resolve(entry), document.offsetAt(position), info.key, typed);
-  if (!found) return [];
+  if (!found) return undefined;
   const range = { start: document.positionAt(found.start), end: position };
-  return found.items.map((item) => ({ ...item, filterText: item.filterText ?? item.label, textEdit: { range, newText: item.label } }));
+  const items = found.items.map((item) => ({ ...item, filterText: item.filterText ?? item.label, textEdit: { range, newText: item.label } }));
+  return { items, exclusive: found.exclusive };
 }
 
 connection.onHover((params) => {

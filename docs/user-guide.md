@@ -413,6 +413,8 @@ side, with `[]` when the element repeats (`CodeableConcept[]`). Turn them off wi
   RM attributes of the node's class (`value`, `defining_code`, `null_flavour`, …).
 - FHIR: the elements of the current type with type and cardinality, and `as(T)` for each type of a
   choice element.
+- Inside `as(` / `ofType(`: the types the element can be cast to, plus the resources a Reference may
+  point at (`$resource.encounter.as(` offers `Reference` and `Encounter`).
 - Path variables (`$archetype`, `$resource`, …) at the start of the value, as in phase 1.
 
 ### 9.6 Go to Definition into the model

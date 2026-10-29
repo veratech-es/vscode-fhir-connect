@@ -49,7 +49,7 @@ FHIR R4 is bundled.
 | Unresolved names | Automatic warning on names no file declares | 2 |
 | Path hover | Mouse over a path segment: node label, RM type, cardinality, template / FHIR type | 3 |
 | Inlay hints | Grey hint after each `with.fhir` / `with.openehr` line | 3 |
-| Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)` | 3 |
+| Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)`, types inside `as(` | 3 |
 | Jump into the template | `F12` on an openEHR path segment or `context.template.id` | 3 |
 | Path warnings | Automatic warning on the first segment that does not resolve | 3 |
 
