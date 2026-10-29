@@ -49,6 +49,7 @@ export interface FileEntry {
   lineStarts: number[];
   /** directory segments, used to prefer the nearest declaration */
   dir: string[];
+  doc: FcDocument;
 }
 
 export interface Location {
@@ -69,6 +70,7 @@ export function extractEntry(uri: string, doc: FcDocument): FileEntry {
     methods: [],
     lineStarts: lineStarts(doc.text),
     dir: directoryOf(uri),
+    doc,
   };
   const root = doc.yaml.contents;
   if (!isMap(root)) return entry;
@@ -120,21 +122,21 @@ function collectMethods(items: Node[], prefix: string, entry: FileEntry): void {
   }
 }
 
-function valueAt(map: YAMLMap | undefined, key: string): Node | null | undefined {
+export function valueAt(map: YAMLMap | undefined, key: string): Node | null | undefined {
   const pair = map?.items.find((p: Pair) => isScalar(p.key) && String(p.key.value) === key);
   return pair?.value as Node | null | undefined;
 }
 
-function mapAt(map: YAMLMap | undefined, key: string): YAMLMap | undefined {
+export function mapAt(map: YAMLMap | undefined, key: string): YAMLMap | undefined {
   const value = valueAt(map, key);
   return isMap(value) ? value : undefined;
 }
 
-function scalarAt(map: YAMLMap | undefined, key: string): { value: string; span: Span } | undefined {
+export function scalarAt(map: YAMLMap | undefined, key: string): { value: string; span: Span } | undefined {
   return scalarOf(valueAt(map, key));
 }
 
-function scalarOf(node: Node | null | undefined): { value: string; span: Span } | undefined {
+export function scalarOf(node: Node | null | undefined): { value: string; span: Span } | undefined {
   if (!isScalar(node) || node.value === null || node.value === undefined || !node.range) return undefined;
   const value = String(node.value).trim();
   if (!value) return undefined;
@@ -180,27 +182,28 @@ function commonDepth(a: string[], b: string[]): number {
 /** All mapping files of the workspace, by name, with the references between them. */
 export class WorkspaceIndex {
   private readonly entries = new Map<string, FileEntry>();
+  /** bumped on every change */
+  generation = 0;
 
   /** Indexes (or re-indexes) a file; files that are not FHIRConnect files are dropped. */
   set(uri: string, text: string): FileEntry | undefined {
     const doc = parseFcDocument(text);
     if (!doc) {
-      this.entries.delete(uri);
+      this.delete(uri);
       return undefined;
     }
-    const entry = extractEntry(uri, doc);
-    this.entries.set(uri, entry);
-    return entry;
+    return this.setParsed(uri, doc);
   }
 
   setParsed(uri: string, doc: FcDocument): FileEntry {
     const entry = extractEntry(uri, doc);
     this.entries.set(uri, entry);
+    this.generation++;
     return entry;
   }
 
   delete(uri: string): void {
-    this.entries.delete(uri);
+    if (this.entries.delete(uri)) this.generation++;
   }
 
   get(uri: string): FileEntry | undefined {

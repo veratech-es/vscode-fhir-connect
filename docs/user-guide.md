@@ -7,6 +7,7 @@ keyboard shortcuts and features, see the [cheat sheet](cheatsheet.md).
 | --- | --- | --- |
 | 0.1.0 | 1 | Validation, completion, hover documentation, outline, *New Mapping File* command |
 | 0.2.0 | 2 | Navigation between mapping files: definition, references, rename, name completion, unresolved names |
+| 0.3.0 | 3 | Paths against templates and FHIR R4: hover, inlay hints, path completion, Go to Definition into the template, path warnings |
 
 Shortcuts are the VS Code defaults for Windows and Linux; on macOS use `Cmd` for `Ctrl` and `Option`
 for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
@@ -21,9 +22,10 @@ for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
 6. [Outline and breadcrumbs](#6-outline-and-breadcrumbs)
 7. [New mapping file](#7-new-mapping-file)
 8. [Navigation between mapping files](#8-navigation-between-mapping-files)
-9. [Settings](#9-settings)
-10. [Troubleshooting](#10-troubleshooting)
-11. [Diagnostic reference](#11-diagnostic-reference)
+9. [Paths against templates and FHIR R4](#9-paths-against-templates-and-fhir-r4)
+10. [Settings](#10-settings)
+11. [Troubleshooting](#11-troubleshooting)
+12. [Diagnostic reference](#12-diagnostic-reference)
 
 ## 1. Getting started
 
@@ -88,7 +90,7 @@ The `type` key decides which keys are valid:
 Problems are reported while you type, as squiggles in the editor and as entries in the *Problems*
 panel (`Ctrl+Shift+M`). Use `F8` and `Shift+F8` to jump to the next and previous problem in the
 file. Every problem has the source `FHIRConnect` and a code (listed in
-[section 11](#11-diagnostic-reference)), so you can filter the *Problems* panel by either.
+[section 12](#12-diagnostic-reference)), so you can filter the *Problems* panel by either.
 
 ### What is checked
 
@@ -319,16 +321,125 @@ Put the cursor on a `metadata.name`, or on a reference, and press `F2`. Type the
 - Edits land in the files but are not saved; *File* → *Save All* (`Ctrl+K S`) saves them, and
   `Ctrl+Z` in each file undoes them.
 
-## 9. Settings
+## 9. Paths against templates and FHIR R4
+
+From phase 3 the extension reads the paths of every mapping method (`with.fhir`, `with.openehr`,
+conditions, `manual` entries) and works out what each one points at: an element of a FHIR R4 type on
+one side, a node of an openEHR operational template on the other. This drives hover, inlay hints,
+path completion, Go to Definition into the template and path warnings.
+
+### 9.1 Where the models come from
+
+| Side | Source | What you need to do |
+| --- | --- | --- |
+| FHIR | The FHIR R4 (4.0.1) resources and data types, bundled with the extension | Nothing. `spec.fhirConfig.structureDefinition` picks the root resource. |
+| FHIR profiles | StructureDefinition `.json` files in the workspace | Optional. A profile URL in `structureDefinition` resolves to the type the profile constrains. |
+| openEHR | Operational templates (`.opt`, OPT 1.4 XML) in the workspace | Put the templates of your project somewhere in the workspace folder. |
+
+The extension scans the whole workspace for `.opt` files and for `.json` files that contain a
+StructureDefinition, and follows changes to them. Web templates (`.json` from the openEHR web template
+format) are not read; export the OPT instead.
+
+A model mapping is checked against every template that contains its archetype
+(`spec.openEhrConfig.archetype`), so the same model works for all the templates that use it. When no
+template in the workspace contains the archetype, its openEHR paths stay unchecked and an information
+message on `archetype` says so. When the workspace has no templates at all, nothing is reported on the
+openEHR side.
+
+### 9.2 How a path is read
+
+The extension follows the openFHIR engine (grammar v0.9.0):
+
+| Path | Starts from |
+| --- | --- |
+| `$resource.code` | The root resource of the model (`structureDefinition`). |
+| `$fhirRoot.code`, `code` | The FHIR path of the parent method. A relative path is `parent.child`. |
+| `$archetype/data[at0001]` | The archetype root. |
+| `$composition/context` | The root COMPOSITION of the template. |
+| `$openehrRoot/...`, `items[at0004]` | The openEHR path of the parent method. A relative path is `parent/child`. |
+| `$reference` | Transparent: the children of a `reference` block keep the parent's openEHR context, and their FHIR paths start from the referenced resource. |
+
+More rules the engine applies, and the extension with it:
+
+- **Slot models** (`slotArchetype`): `$resource` and `$fhirRoot` are the FHIR path of the method that
+  calls the slot, and `$archetype` its openEHR path. A model used both on its own and as a slot accepts
+  both.
+- **Conditions** (`fhirCondition`, `openehrCondition`) start from the parent method, and
+  `targetAttribute` is relative to `targetRoot`.
+- **Manual mappings**: `path` values are relative to the method's own paths.
+- **Extensions**: `add` methods start at the model root; `overwrite` methods replace a method of the
+  extended model (found by name at any level) and take its parent; `append` methods take the
+  `appendTo` method's context.
+- **Implicit steps**: like the engine, a path may stop at an `ELEMENT` and go on as if it named its
+  `value`, and at a `DV_CODED_TEXT` as if it named its `defining_code`. Hover shows the implicit step.
+- **Lenient fallback**: when a relative path does not resolve from the parent, it is tried from the
+  ancestors and from the archetype root, as mappings in the library often repeat the parent prefix.
+- **FHIR functions**: `as(T)` / `ofType(T)` cast a choice (also written `valueQuantity`), `resolve()`
+  follows a Reference, `where(...)`, `first()` and `extension(url)` keep the type. Casts accept the
+  FHIRPath names (`dateTime`) and the HAPI class names the engine accepts (`DateTimeType`).
+- A **`|suffix`** on an openEHR path (`|code`, `|magnitude`) ends the check: the part after `|` is a
+  web template attribute, not a template node.
+
+Anything the extension cannot follow (an unfilled slot, an unknown function, a profile that is not in
+the workspace) is left alone: no warning, no hover, no hint.
+
+### 9.3 Hover on a path
+
+Hover over any segment of a path to see what it resolves to.
+
+- openEHR: `**label** · RM type · min..max`, the node description, the archetype code and template,
+  and the full resolved path. When several templates contain the archetype, the first three nodes are listed.
+- An RM attribute (`value`, `defining_code`, …): its type and the RM class that declares it.
+- FHIR: the element, its type(s), cardinality and short description, and the resolved path
+  (`Observation.code.coding`).
+
+Hover over `context.template.id`, `spec.fhirConfig.structureDefinition` or `context.profile.url` to see
+which template or StructureDefinition the value names.
+
+### 9.4 Inlay hints
+
+At the end of every `with.fhir` and `with.openehr` line, a grey hint shows what the path resolved to:
+the node label and RM type on the openEHR side (`Labortest-Kategorie · ELEMENT`), the type on the FHIR
+side, with `[]` when the element repeats (`CodeableConcept[]`). Turn them off with
+`fhirconnect.inlayHints.enable`, or for all languages with `editor.inlayHints.enabled`
+(`Ctrl+Alt` held shows them while they are set to *offUnlessPressed*).
+
+### 9.5 Path completion
+
+`Ctrl+Space` inside a path value offers the next segment:
+
+- openEHR: the child nodes of the current node as `attribute[code]`, labelled with the node text
+  (type the label to filter), with a `name/value` predicate when two siblings share a code; then the
+  RM attributes of the node's class (`value`, `defining_code`, `null_flavour`, …).
+- FHIR: the elements of the current type with type and cardinality, and `as(T)` for each type of a
+  choice element.
+- Path variables (`$archetype`, `$resource`, …) at the start of the value, as in phase 1.
+
+### 9.6 Go to Definition into the model
+
+`F12` (or `Ctrl+click`) on a segment of an openEHR path opens the template at that node. On
+`context.template.id` it opens the template, and on a `structureDefinition` or `context.profile.url`
+that names a workspace profile it opens the StructureDefinition file. FHIR core types have no file to
+open.
+
+### 9.7 Path warnings
+
+A warning marks the first segment that does not resolve; the rest of the path is not checked. See the
+[diagnostic reference](#12-diagnostic-reference) for the codes. Turn path checks off, while keeping
+grammar validation, with `fhirconnect.validation.paths`.
+
+## 10. Settings
 
 Open the settings with `Ctrl+,` and search for `fhirconnect`.
 
 | Setting | Default | Description |
 | --- | --- | --- |
 | `fhirconnect.validation.enable` | `true` | Report grammar problems and unresolved names in mapping files. |
+| `fhirconnect.validation.paths` | `true` | Check FHIR and openEHR paths against FHIR R4 and the workspace templates. |
+| `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to at the end of the line. |
 | `fhirconnect.trace.server` | `off` | Trace the communication with the language server (`messages`, `verbose`) in the *FHIRConnect* output channel. |
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
@@ -337,10 +448,14 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | F12 or name completion finds nothing | The target file is inside the open workspace folder and has a `metadata.name`. |
 | Many "no mapping named" warnings | The workspace is a subfolder of the project; open the project root. |
 | Another YAML extension reports schema errors on mapping files | That extension validates all YAML; turn off its schema for these files. |
+| No hover or hint on openEHR paths | A `.opt` containing the model's archetype is in the workspace (look for the `archetype-not-in-templates` information). Web templates are not read. |
+| No hover on a FHIR path after a profile URL | The StructureDefinition `.json` is in the workspace and its `url` matches. |
+| A path warning you believe is wrong | Check the segment in the template (`F12` on the previous segment) and the engine rules in [9.2](#92-how-a-path-is-read). |
+| Inlay hints clutter the editor | Set `fhirconnect.inlayHints.enable` to `false`. |
 | A new version does not show up | Reload the window (`Ctrl+Shift+P` → *Developer: Reload Window*). |
 | Something looks wrong | Set `fhirconnect.trace.server` to `verbose` and look at *View* → *Output* → *FHIRConnect*. |
 
-## 11. Diagnostic reference
+## 12. Diagnostic reference
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
@@ -359,3 +474,10 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | `conflicting-keys` | Warning | `targetAttribute` with `targetAttributes`, or `criteria` with `criterias`. |
 | `unresolved-reference` | Warning | No mapping file of the expected type has this name. |
 | `unresolved-method` | Warning | The extended model has no method with this `appendTo` name. |
+| `archetype-not-in-templates` | Information | No workspace template contains the model's archetype; openEHR paths are not checked. |
+| `unknown-openehr-node` | Warning | No child node of the template matches this segment (code or name). |
+| `unknown-rm-attribute` | Warning | The RM class of the node has no attribute with this name. |
+| `unknown-fhir-element` | Warning | The FHIR type has no element with this name. |
+| `unknown-fhir-type` | Warning | `as(...)` / `ofType(...)` names something that is not a FHIR R4 type. |
+| `impossible-fhir-type` | Warning | The cast type is not one of the element's types. |
+| `unresolved-overwrite` | Warning | An `overwrite` method names no method of the extended model; the engine skips it. |

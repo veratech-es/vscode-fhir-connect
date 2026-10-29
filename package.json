@@ -1,8 +1,8 @@
 {
   "name": "vscode-fhir-connect",
   "displayName": "FHIRConnect",
-  "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, hover documentation and outline.",
-  "version": "0.2.0",
+  "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, and path resolution against openEHR templates and FHIR R4.",
+  "version": "0.3.0",
   "publisher": "damoca",
   "license": "Apache-2.0",
   "private": true,
@@ -43,6 +43,16 @@
           "type": "boolean",
           "default": true,
           "description": "Report FHIRConnect grammar problems (unknown keys, missing required keys, invalid values) in mapping files."
+        },
+        "fhirconnect.validation.paths": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check the FHIR and openEHR paths of mapping files against the FHIR R4 definitions and the operational templates (.opt) of the workspace."
+        },
+        "fhirconnect.inlayHints.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show what each `with` path resolves to (openEHR node and type, FHIR type) at the end of the line."
         },
         "fhirconnect.trace.server": {
           "type": "string",

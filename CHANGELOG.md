@@ -1,6 +1,27 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.3.0 (unreleased)
+
+Path resolution against openEHR templates and FHIR R4 (phase 3), following the rules of the openFHIR
+engine.
+
+- Reads the operational templates (`.opt`) and StructureDefinitions (`.json`) of the workspace, and
+  ships an index of the FHIR R4 (4.0.1) resources and data types.
+- Resolves every FHIR and openEHR path of model and extension files: `with`, conditions and manual
+  entries, through `$resource`, `$fhirRoot`, `$archetype`, `$composition`, `$openehrRoot`,
+  `followedBy`, `reference`, slot archetypes and extension modes (`add`, `overwrite`, `append`).
+- Warnings for FHIR elements, casts, template nodes and RM attributes that do not exist, for
+  `overwrite` methods the engine cannot find, and a note when no template contains the archetype.
+- Hover on a path step: template node with label, description, RM type and occurrences, or FHIR
+  element with type, cardinality and description, plus the full resolved path.
+- Inlay hints after each `with` path with the openEHR node and the FHIR type.
+- Completion of the next path step: template nodes (searchable by label and at-code), RM attributes,
+  FHIR elements and the casts of choice elements.
+- Go to Definition from an openEHR path step to its node in the template, from `context.template.id`
+  to the template, and from a profile URL to its StructureDefinition.
+- Settings `fhirconnect.validation.paths` and `fhirconnect.inlayHints.enable`.
+
+## 0.2.0
 
 Navigation between mapping files (phase 2), following the openFHIR IntelliJ plugin.
 

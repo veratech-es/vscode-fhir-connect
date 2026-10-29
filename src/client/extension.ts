@@ -19,7 +19,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ],
     synchronize: {
       configurationSection: 'fhirconnect',
-      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{yml,yaml}'),
+      // mapping files, operational templates and StructureDefinitions
+      fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{yml,yaml,opt,json}'),
     },
   };
   client = new LanguageClient('fhirconnect', 'FHIRConnect', serverOptions, clientOptions);

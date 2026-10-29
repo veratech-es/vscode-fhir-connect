@@ -3,7 +3,7 @@
 Editing support for [FHIRConnect](https://sevkohler.github.io/FHIRconnect-spec/) mapping files, the
 YAML mapping language for bidirectional transformation between openEHR and FHIR.
 
-This first version supports grammar **v0.9.0**, the version executed by the
+The extension supports grammar **v0.9.0**, the version executed by the
 [openFHIR engine](https://github.com/medblocks/openFHIR). Files with another grammar version are
 recognised but not validated yet.
 
@@ -48,6 +48,18 @@ recognised but not validated yet.
   - A **warning** marks names that no file in the workspace declares.
   - `appendTo` jumps to, completes and checks the method of the model named in `spec.extends`
     (`parent.child` for nested methods).
+- **Paths against templates and FHIR R4**: the FHIR and openEHR paths of every method are resolved
+  the way the openFHIR engine reads them, against the FHIR R4 definitions (bundled) and the
+  operational templates (`.opt`) and StructureDefinitions found in the workspace.
+  - **Hover** on a path segment: node label, RM type, cardinality and template, or FHIR element type
+    and cardinality, with the full resolved path.
+  - **Inlay hints** after each `with` path (`Labortest-Kategorie · ELEMENT`, `CodeableConcept[]`).
+  - **Completion** of the next segment: child nodes as `attribute[code]` (filter by label), RM
+    attributes, FHIR elements and `as(T)` casts.
+  - **Go to Definition** from an openEHR segment or `context.template.id` into the template, and from
+    a profile URL into the StructureDefinition.
+  - **Warnings** on the first segment that does not resolve, and on `overwrite` methods that replace
+    nothing.
 - **New mapping file** command (*FHIRConnect: New Mapping File*) for model, extension and context
   files.
 
@@ -62,6 +74,8 @@ affected.
 | Setting | Default | Description |
 | --- | --- | --- |
 | `fhirconnect.validation.enable` | `true` | Report grammar problems in mapping files. |
+| `fhirconnect.validation.paths` | `true` | Check paths against FHIR R4 and the workspace templates. |
+| `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to. |
 | `fhirconnect.trace.server` | `off` | Trace the communication with the language server. |
 
 ## Install from a `.vsix`
@@ -69,7 +83,7 @@ affected.
 ```shell
 npm ci
 npm run package                      # creates vscode-fhir-connect-<version>.vsix
-code --install-extension vscode-fhir-connect-0.2.0.vsix
+code --install-extension vscode-fhir-connect-0.3.0.vsix
 ```
 
 Or in VS Code: *Extensions* view → `…` → *Install from VSIX…*.
@@ -100,20 +114,30 @@ The extension is a thin client (`src/client`) that starts a language server (`sr
 | `server/validation.ts` | Walks the YAML tree against the grammar. |
 | `server/cursor.ts` | Works out the block under the cursor from indentation, so completion works in files that do not parse yet. |
 | `server/workspace.ts`, `scan.ts` | The workspace index: names, references and methods of every mapping file, and how a name resolves. |
+| `server/models` | The FHIR R4 index (`fhir-r4.json`), StructureDefinition profiles, the OPT parser and the openEHR RM classes. |
+| `server/paths` | Path syntax, the resolver (engine semantics per method) and the path features: hover, hints, completion, definition. |
 | `server/completion.ts`, `hover.ts`, `symbols.ts` | The language features. |
+
+`server/models/fhir-r4.json` is generated from the official FHIR R4 (4.0.1) definition bundles
+`profiles-resources.json` and `profiles-types.json`:
+
+```shell
+node scripts/build-fhir-index.mjs <folder with the two bundles>
+```
 
 `test/fixtures/mapping-lib-0.9.0` holds the 75 mapping files of the 0.9.0 tag of the
 [FHIRconnect mapping library](https://github.com/SevKohler/FHIRconnect-mapping-lib). The corpus test
 requires them to validate without errors; the warnings they produce, and the references that resolve
-to nothing, are kept in snapshots.
+to nothing, are kept in snapshots. The fixture also holds the 12 KDS operational templates of the library (main branch), so the path
+test resolves the library's paths and snapshots the ones that do not resolve.
 
 ## Roadmap
 
 1. **Phase 1 (0.1.0):** validation, completion, hover, outline, new file command.
 2. **Phase 2 (0.2.0):** navigation between mapping files: definition, references, rename, name
    completion and unresolved names.
-3. **Phase 3:** openEHR templates and FHIR StructureDefinitions: path resolution, path completion and
-   path diagnostics.
+3. **Phase 3 (0.3.0):** openEHR templates and FHIR StructureDefinitions: path resolution, hover,
+   inlay hints, path completion, Go to Definition into the template and path diagnostics.
 4. **Phase 4:** running mappings against the openFHIR engine, grammar v1.0.0, AQL conversion.
 
 ## License
