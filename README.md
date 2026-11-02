@@ -13,6 +13,8 @@ on a FHIR resource or an openEHR Composition and shows the result.
 - [User guide](docs/user-guide.md): every feature in detail, settings, troubleshooting and the list of
   diagnostics.
 - [Cheat sheet](docs/cheatsheet.md): keyboard shortcuts and features on one page.
+- [Publishing](docs/publishing.md): how to publish a release on the Visual Studio Marketplace and
+  Open VSX.
 
 ## Features
 
@@ -69,8 +71,12 @@ on a FHIR resource or an openEHR Composition and shows the result.
   archetype. In a context file, what the context loads.
 - **Running mappings with openFHIR**: *Run Mapping to openEHR* and *Run Mapping to FHIR* send the
   open FHIR resource or Composition to an openFHIR engine (3.0.3 or later) and open the result beside
-  it, with the engine's issues in *Problems*. The engine reloads the mapping files on save. See
-  [`docs/openfhir/docker-compose.yml`](docs/openfhir/docker-compose.yml) to start it.
+  it, with the engine's issues in *Problems*. They are on the play button of the editor title and in
+  the editor and Explorer context menus. The engine reloads the mapping files on save, or by hand
+  with *Sync Mappings with openFHIR*; *Check openFHIR Connection* and the *openFHIR* status bar item
+  show whether it is reachable, and *Set openFHIR Token* stores a bearer token for an engine behind
+  authentication. See [`docs/openfhir/docker-compose.yml`](docs/openfhir/docker-compose.yml) to
+  start it.
 - **New mapping file** command (*FHIRConnect: New Mapping File*) for model, extension and context
   files.
 
@@ -87,6 +93,10 @@ affected.
 | `fhirconnect.validation.enable` | `true` | Report grammar problems in mapping files. |
 | `fhirconnect.validation.paths` | `true` | Check paths against FHIR R4 and the workspace templates. |
 | `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to. |
+| `fhirconnect.openfhir.url` | `http://localhost:8080` | Base URL of the openFHIR engine. |
+| `fhirconnect.openfhir.syncOnSave` | `true` | Make openFHIR reload its mappings when a mapping file or `.opt` is saved. |
+| `fhirconnect.openfhir.bootstrapFolder` | empty | Folder the engine reads its mappings from; empty = the workspace folder. |
+| `fhirconnect.openfhir.format` | `canonical` | Format of the Composition returned by *Run Mapping to openEHR* (`canonical` or `flat`). |
 | `fhirconnect.trace.server` | `off` | Trace the communication with the language server. |
 
 ## Install from a `.vsix`
@@ -94,7 +104,7 @@ affected.
 ```shell
 npm ci
 npm run package                      # creates vscode-fhir-connect-<version>.vsix
-code --install-extension vscode-fhir-connect-0.5.0.vsix
+code --install-extension vscode-fhir-connect-<version>.vsix
 ```
 
 Or in VS Code: *Extensions* view → `…` → *Install from VSIX…*.
@@ -158,6 +168,8 @@ tests run on it.
    operational mappings, `^` and `../`), and the Mapping Context view.
 5. **Phase 5 (0.5.0):** running mappings with a local openFHIR engine: sync on save, *Run Mapping
    to openEHR* / *to FHIR*, engine issues in *Problems*.
+   **0.5.1:** ready for the Visual Studio Marketplace and Open VSX (icon, metadata,
+   [publishing guide](docs/publishing.md)).
 6. **Later:** AQL conversion, web templates, ADL 2.
 
 ## Author
