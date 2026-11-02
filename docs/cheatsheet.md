@@ -1,11 +1,11 @@
 # FHIRConnect for VS Code: cheat sheet
 
-Version 0.4.0 (phases 1 to 4). The [user guide](user-guide.md) explains each feature in detail.
+Version 0.5.0 (phases 1 to 5). The [user guide](user-guide.md) explains each feature in detail.
 
 The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` or
 `grammar: FHIRConnect/v1.0.0` line; each file is checked with the version it declares.
 Path features (phase 3) also need the operational templates (`.opt`) somewhere in the workspace;
-FHIR R4 is bundled.
+FHIR R4 is bundled. Running mappings (phase 5) needs an openFHIR engine, e.g. in Docker.
 
 ## Keyboard shortcuts
 
@@ -30,7 +30,7 @@ FHIR R4 is bundled.
 | Problems panel | `Ctrl+Shift+M` | `Cmd+Shift+M` | validation |
 | Next / previous problem | `F8` / `Shift+F8` | `F8` / `Shift+F8` | validation |
 | Show Mapping Context | `Ctrl+Alt+M` | `Cmd+Option+M` | mapping files |
-| Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` | *FHIRConnect: New Mapping File* |
+| Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` | *FHIRConnect: New Mapping File*, *Run Mapping to openEHR / to FHIR*, *Sync Mappings with openFHIR* |
 | Save all (after a rename) | `Ctrl+K S` | `Cmd+Option+S` | rename |
 
 ## Features at a glance
@@ -60,6 +60,12 @@ FHIR R4 is bundled.
 | Grammar v1.0.0 | Automatic, from the `grammar` line; v0.9.0 files keep working | 4 |
 | Path operators | `^.code` (FHIR) and `../items[at0001]` (openEHR) go back one element of the parent path (v1.0.0) | 4 |
 | Mapping context | *FHIRConnect Mapping Context* view in the Explorer, `Ctrl+Alt+M` | 4 |
+| Start openFHIR | `docker compose up -d` with [`docs/openfhir/docker-compose.yml`](openfhir/docker-compose.yml) and `MAPPINGS` = your mapping folder | 5 |
+| Check the engine | Click *openFHIR* in the status bar, or *FHIRConnect: Check openFHIR Connection* | 5 |
+| Reload mappings in the engine | Automatic on save, or *FHIRConnect: Sync Mappings with openFHIR*; load failures go to *Problems* | 5 |
+| FHIR → openEHR | Open a FHIR resource or Bundle (`.json`), play button → *Run Mapping to openEHR*, pick the template | 5 |
+| openEHR → FHIR | Open a canonical or flat Composition (`.json`), play button → *Run Mapping to FHIR*, pick the template | 5 |
+| Engine issues | *Problems* (source *openFHIR*) and *Output* → *FHIRConnect openFHIR* | 5 |
 
 ## Reference sites
 
@@ -117,6 +123,10 @@ DV_CODED_TEXT→`defining_code` may be left out, as in the engine.
 | `fhirconnect.validation.enable` | `true` |
 | `fhirconnect.validation.paths` | `true` |
 | `fhirconnect.inlayHints.enable` | `true` |
+| `fhirconnect.openfhir.url` | `http://localhost:8080` |
+| `fhirconnect.openfhir.syncOnSave` | `true` |
+| `fhirconnect.openfhir.bootstrapFolder` | empty (workspace folder) |
+| `fhirconnect.openfhir.format` | `canonical` (or `flat`) |
 | `fhirconnect.trace.server` | `off` |
 
 ## v0.9.0 or v1.0.0

@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient/node';
 import { MappingContextView } from './contextView';
+import { OpenFhirFeature } from './openfhir/feature';
 import { GRAMMAR_VERSIONS, mappingTemplate, type GrammarVersion, type MappingKind } from './templates';
 
 let client: LanguageClient | undefined;
@@ -40,6 +41,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   await client.start();
   new MappingContextView(client).register(context);
+  new OpenFhirFeature(context, client).register();
 }
 
 export async function deactivate(): Promise<void> {

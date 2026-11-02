@@ -1,8 +1,8 @@
 {
   "name": "vscode-fhir-connect",
   "displayName": "FHIRConnect",
-  "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, and path resolution against openEHR templates and FHIR R4.",
-  "version": "0.4.0",
+  "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, path resolution against openEHR templates and FHIR R4, and running mappings with openFHIR.",
+  "version": "0.5.0",
   "publisher": "damoca",
   "license": "Apache-2.0",
   "private": true,
@@ -25,7 +25,8 @@
     "yaml"
   ],
   "activationEvents": [
-    "onLanguage:yaml"
+    "onLanguage:yaml",
+    "onLanguage:json"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -56,6 +57,33 @@
         "title": "Refresh",
         "category": "FHIRConnect",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "fhirconnect.openfhir.runToOpenEhr",
+        "title": "Run Mapping to openEHR",
+        "category": "FHIRConnect",
+        "icon": "$(play)"
+      },
+      {
+        "command": "fhirconnect.openfhir.runToFhir",
+        "title": "Run Mapping to FHIR",
+        "category": "FHIRConnect",
+        "icon": "$(play)"
+      },
+      {
+        "command": "fhirconnect.openfhir.sync",
+        "title": "Sync Mappings with openFHIR",
+        "category": "FHIRConnect"
+      },
+      {
+        "command": "fhirconnect.openfhir.checkConnection",
+        "title": "Check openFHIR Connection",
+        "category": "FHIRConnect"
+      },
+      {
+        "command": "fhirconnect.openfhir.setToken",
+        "title": "Set openFHIR Token",
+        "category": "FHIRConnect"
       }
     ],
     "configuration": {
@@ -75,6 +103,30 @@
           "type": "boolean",
           "default": true,
           "description": "Show what each `with` path resolves to (openEHR node and type, FHIR type) at the end of the line."
+        },
+        "fhirconnect.openfhir.url": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "markdownDescription": "Base URL of the openFHIR engine (3.0.3 or later) that runs the mappings, e.g. `http://localhost:8080`."
+        },
+        "fhirconnect.openfhir.syncOnSave": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Make openFHIR reload its bootstrap folder (`POST /$bootstrap`) when a mapping file or an operational template inside `#fhirconnect.openfhir.bootstrapFolder#` is saved."
+        },
+        "fhirconnect.openfhir.bootstrapFolder": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Folder that openFHIR reads as its bootstrap folder (mounted as `/app/bootstrap`), absolute or relative to the first workspace folder. Empty: the first workspace folder. Files the engine cannot load are reported on the files of this folder."
+        },
+        "fhirconnect.openfhir.format": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "flat"
+          ],
+          "default": "canonical",
+          "description": "Format of the openEHR Composition that Run Mapping to openEHR returns."
         },
         "fhirconnect.trace.server": {
           "type": "string",
@@ -119,6 +171,16 @@
           "command": "fhirconnect.showMappingContext",
           "when": "fhirconnect.isMapping",
           "group": "navigation@1.6"
+        },
+        {
+          "command": "fhirconnect.openfhir.runToOpenEhr",
+          "when": "fhirconnect.openfhirInput == fhir",
+          "group": "fhirconnect@1"
+        },
+        {
+          "command": "fhirconnect.openfhir.runToFhir",
+          "when": "fhirconnect.openfhirInput == composition",
+          "group": "fhirconnect@2"
         }
       ],
       "commandPalette": [
@@ -144,6 +206,30 @@
           "command": "fhirconnect.refreshMappingContext",
           "when": "view == fhirconnect.mappingContext",
           "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "fhirconnect.openfhir.runToOpenEhr",
+          "when": "fhirconnect.openfhirInput == fhir",
+          "group": "navigation@10"
+        },
+        {
+          "command": "fhirconnect.openfhir.runToFhir",
+          "when": "fhirconnect.openfhirInput == composition",
+          "group": "navigation@11"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "fhirconnect.openfhir.runToOpenEhr",
+          "when": "resourceExtname == .json",
+          "group": "fhirconnect@1"
+        },
+        {
+          "command": "fhirconnect.openfhir.runToFhir",
+          "when": "resourceExtname == .json",
+          "group": "fhirconnect@2"
         }
       ]
     },

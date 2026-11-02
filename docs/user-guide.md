@@ -9,6 +9,7 @@ keyboard shortcuts and features, see the [cheat sheet](cheatsheet.md).
 | 0.2.0 | 2 | Navigation between mapping files: definition, references, rename, name completion, unresolved names |
 | 0.3.0 | 3 | Paths against templates and FHIR R4: hover, inlay hints, path completion, Go to Definition into the template, path warnings |
 | 0.4.0 | 4 | Grammar v1.0.0 next to v0.9.0; *Mapping Context* view |
+| 0.5.0 | 5 | Running mappings with an openFHIR engine: sync, *Run Mapping to openEHR* / *to FHIR*, engine issues in *Problems* |
 
 Shortcuts are the VS Code defaults for Windows and Linux; on macOS use `Cmd` for `Ctrl` and `Option`
 for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
@@ -25,9 +26,10 @@ for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
 8. [Navigation between mapping files](#8-navigation-between-mapping-files)
 9. [Paths against templates and FHIR R4](#9-paths-against-templates-and-fhir-r4)
 10. [Mapping context](#10-mapping-context)
-11. [Settings](#11-settings)
-12. [Troubleshooting](#12-troubleshooting)
-13. [Diagnostic reference](#13-diagnostic-reference)
+11. [Running mappings with openFHIR](#11-running-mappings-with-openfhir)
+12. [Settings](#12-settings)
+13. [Troubleshooting](#13-troubleshooting)
+14. [Diagnostic reference](#14-diagnostic-reference)
 
 ## 1. Getting started
 
@@ -110,7 +112,7 @@ The `type` key decides which keys are valid:
 Problems are reported while you type, as squiggles in the editor and as entries in the *Problems*
 panel (`Ctrl+Shift+M`). Use `F8` and `Shift+F8` to jump to the next and previous problem in the
 file. Every problem has the source `FHIRConnect` and a code (listed in
-[section 13](#13-diagnostic-reference)), so you can filter the *Problems* panel by either.
+[section 14](#14-diagnostic-reference)), so you can filter the *Problems* panel by either.
 
 ### What is checked
 
@@ -483,7 +485,7 @@ for `fhirconnect`.
 ### 9.8 Path warnings
 
 A warning marks the first segment that does not resolve; the rest of the path is not checked. See the
-[diagnostic reference](#13-diagnostic-reference) for the codes. Turn path checks off, while keeping
+[diagnostic reference](#14-diagnostic-reference) for the codes. Turn path checks off, while keeping
 grammar validation, with `fhirconnect.validation.paths`.
 
 ## 10. Mapping context
@@ -506,7 +508,75 @@ extensions, sub-contexts (`contexts`), operational models and, for a sub-context
 `slotContext` methods it is entered from. Names that resolve to no file are marked with a warning
 icon.
 
-## 11. Settings
+## 11. Running mappings with openFHIR
+
+The extension can run the mappings of the workspace with an [openFHIR](https://github.com/openFHIR/openfhir)
+engine (version 3.0.3 or later, the first one that reads grammar v1.0.0 sub-contexts) and show the
+result next to the input. The engine is not part of the extension: it runs on your computer in
+Docker, and the extension talks to it over HTTP at `fhirconnect.openfhir.url`.
+
+### 11.1 Start the engine
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+2. Copy [`docs/openfhir/docker-compose.yml`](openfhir/docker-compose.yml) to any folder.
+3. In that folder, start openFHIR and MongoDB with your mapping folder as the engine's bootstrap
+   folder (PowerShell):
+
+   ```powershell
+   $env:MAPPINGS="C:\codigo\my-mappings"
+   docker compose up -d
+   ```
+
+   On macOS or Linux: `MAPPINGS=~/my-mappings docker compose up -d`.
+4. In VS Code, open the same mapping folder and run *FHIRConnect: Check openFHIR Connection*. The
+   status bar item *openFHIR* turns into a check mark.
+
+The engine reads the context mappings (`*.context.yaml`), the model and extension mappings and the
+operational templates (`.opt`) of the folder, sub-folders included. `docker compose down` stops it.
+The open-source openFHIR has no authentication and is meant for testing, not for production data.
+
+### 11.2 Keep the engine in sync
+
+| How | What happens |
+| --- | --- |
+| Save a mapping file or a `.opt` inside the bootstrap folder | With `fhirconnect.openfhir.syncOnSave` on, the extension calls `POST /$bootstrap` and the engine reloads the changed files. Several files saved at once give one reload. |
+| *FHIRConnect: Sync Mappings with openFHIR* | The same, by hand, with a message that counts created, updated, unchanged and failed files. |
+
+Files the engine cannot load (for example `slotArchetype` together with `slotContext`) appear in
+*Problems* on that file, with the engine's reason and source *openFHIR*. When the workspace folder
+is not the folder mounted as bootstrap folder, set `fhirconnect.openfhir.bootstrapFolder`.
+
+### 11.3 Run a mapping
+
+| Command | Input (the open JSON file) | Engine operation | Result |
+| --- | --- | --- | --- |
+| *FHIRConnect: Run Mapping to openEHR* | A FHIR resource or Bundle | `POST /$toopenehr?templateId=&format=` | The Composition, in the format of `fhirconnect.openfhir.format` (`canonical` or `flat`) |
+| *FHIRConnect: Run Mapping to FHIR* | An openEHR Composition, canonical or flat (told apart automatically) | `POST /$tofhir` with a `Parameters` resource | The Bundle with the mapped resources and the engine's `Provenance` |
+
+The commands are on the play button of the editor title (only on JSON files the engine can map), in
+the editor and Explorer context menus and in the command palette. They ask for the template to map
+with: the templates of the context mappings of the workspace (sub-contexts left out), plus *Let
+openFHIR choose* (by the profile of the resource, or by the template of a canonical Composition). A
+flat Composition always needs a template. The choice is remembered per input file.
+
+The result opens as an unsaved JSON document beside the input; save it if you want to keep it. The
+input file may have unsaved changes: the editor text is sent.
+
+Issues the engine reports in its `OperationOutcome` (elements it could not map, values of the wrong
+type, a missing template) appear in *Problems* on the input file, source *openFHIR*, with the FHIR
+path the engine names. Every call, its time and its issues are written to *View* → *Output* →
+*FHIRConnect openFHIR*. Try it with [`docs/openfhir/laborbericht-bundle.json`](openfhir/laborbericht-bundle.json)
+and the KDS mappings of the mapping library.
+
+### 11.4 Another engine
+
+`fhirconnect.openfhir.url` may point to an engine on another computer. Before the first file goes to
+an engine that is not on `localhost`, the extension asks for confirmation once per session. For an
+engine behind authentication, *FHIRConnect: Set openFHIR Token* stores a bearer token in the VS Code
+secret storage (not in `settings.json`); run it with an empty value to remove the token. The engine
+then still needs the mapping files in its own bootstrap folder.
+
+## 12. Settings
 
 Open the settings with `Ctrl+,` and search for `fhirconnect`.
 
@@ -515,9 +585,13 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | `fhirconnect.validation.enable` | `true` | Report grammar problems and unresolved names in mapping files. |
 | `fhirconnect.validation.paths` | `true` | Check FHIR and openEHR paths against FHIR R4 and the workspace templates. |
 | `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to at the end of the line. |
+| `fhirconnect.openfhir.url` | `http://localhost:8080` | Base URL of the openFHIR engine. |
+| `fhirconnect.openfhir.syncOnSave` | `true` | Make openFHIR reload its bootstrap folder when a mapping file or `.opt` in it is saved. |
+| `fhirconnect.openfhir.bootstrapFolder` | empty | Folder the engine reads as bootstrap folder, absolute or relative to the workspace; empty = the workspace folder. |
+| `fhirconnect.openfhir.format` | `canonical` | Format of the Composition *Run Mapping to openEHR* returns (`canonical` or `flat`). |
 | `fhirconnect.trace.server` | `off` | Trace the communication with the language server (`messages`, `verbose`) in the *FHIRConnect* output channel. |
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
@@ -532,11 +606,17 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | No hover on a FHIR path after a profile URL | The StructureDefinition `.json` is in the workspace and its `url` matches. |
 | A path warning you believe is wrong | Check the segment in the template (`F12` on the previous segment) and the engine rules in [9.2](#92-how-a-path-is-read). |
 | `Ctrl+Alt+F12` says no ADL archetype was found | The `.adl` file (ADL 1.4; ADL 2 `.adls` is not read) is in the workspace and its header names the same archetype id. |
+| *Cannot reach openFHIR* | The engine is running (`docker compose ps`) and `fhirconnect.openfhir.url` matches its port. The first start takes about a minute. |
+| *Is it openFHIR 3.0.3 or later?* | The URL points to another service or an older engine; pull the latest image (`docker compose pull`). |
+| The run buttons do not appear | The open file is JSON and is a FHIR resource (`resourceType`) or an openEHR Composition; fix JSON errors first. |
+| openFHIR maps nothing or picks another context | Pick the template explicitly; check that the context is loaded (*Sync Mappings with openFHIR* counts it) and has no failure in *Problems*. |
+| *Model mapper with this name … already exists* in *Problems* | openFHIR keeps one namespace of `metadata.name` for the whole bootstrap folder; two projects with a mapping of the same name cannot be loaded together. Mount only the folders of one project (its `model` and `projects/...` folders) or rename one of them. |
+| 404 on `$toopenehr` through a proxy | Some proxies encode the `$` of the operation; call the engine directly. |
 | Inlay hints clutter the editor | Set `fhirconnect.inlayHints.enable` to `false`. |
 | A new version does not show up | Reload the window (`Ctrl+Shift+P` → *Developer: Reload Window*). |
 | Something looks wrong | Set `fhirconnect.trace.server` to `verbose` and look at *View* → *Output* → *FHIRConnect*. |
 
-## 13. Diagnostic reference
+## 14. Diagnostic reference
 
 | Code | Severity | Meaning |
 | --- | --- | --- |

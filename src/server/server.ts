@@ -13,6 +13,7 @@ import {
   type TextEdit,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { isMap } from 'yaml';
 import { URI } from 'vscode-uri';
 import { complete, TRIGGER_CHARACTERS, type NameProvider } from './completion';
 import { parseFcDocument, type FcDocument } from './document';
@@ -20,7 +21,7 @@ import { hover } from './hover';
 import { documentSymbols } from './symbols';
 import { validate, type Problem, type Severity } from './validation';
 import { findWorkspaceFiles, isModelFile } from './scan';
-import { rangeOf, REF_TARGET, WorkspaceIndex, type FileEntry, type Location } from './workspace';
+import { mapAt, rangeOf, REF_TARGET, scalarAt, WorkspaceIndex, type FileEntry, type Location } from './workspace';
 import { ModelIndex } from './models';
 import { PathResolver } from './paths/resolver';
 import { mappingContext, type ContextNode } from './mappingContext';
@@ -303,6 +304,23 @@ connection.onRequest('fhirconnect/mappingContext', (params: TextDocumentPosition
     return { ...rest, location, children: children?.map(withPositions) };
   };
   return nodes.map(withPositions);
+});
+
+/** The context mappings of the workspace, with their template, for the openFHIR commands. */
+connection.onRequest('fhirconnect/contexts', () => {
+  if (!indexReady) return [];
+  return [...index.all()]
+    .filter((entry) => entry.fileType === 'context' && entry.name)
+    .map((entry) => {
+      const root = entry.doc.yaml.contents;
+      const context = isMap(root) ? mapAt(root, 'context') : undefined;
+      return {
+        name: entry.name,
+        uri: entry.uri,
+        templateId: scalarAt(mapAt(context, 'template'), 'id')?.value,
+        scope: scalarAt(context, 'scope')?.value ?? 'root',
+      };
+    });
 });
 
 function modelLocation(target: Target): LspLocation {

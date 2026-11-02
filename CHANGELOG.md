@@ -1,6 +1,27 @@
 # Changelog
 
-## 0.4.0 (unreleased)
+## 0.5.0 (unreleased)
+
+Running mappings with an openFHIR engine (phase 5). The engine (openFHIR 3.0.3 or later) runs
+outside the extension, for example with `docs/openfhir/docker-compose.yml`.
+
+- *FHIRConnect: Run Mapping to openEHR* sends the open FHIR resource or Bundle to `$toopenehr` and
+  opens the Composition beside it, canonical or flat (`fhirconnect.openfhir.format`).
+- *FHIRConnect: Run Mapping to FHIR* sends the open canonical or flat Composition to `$tofhir` and
+  opens the Bundle beside it.
+- Both ask for the template among the context mappings of the workspace and remember it per file;
+  play buttons on JSON files the engine can map.
+- The engine reloads its bootstrap folder (`POST /$bootstrap`) when a mapping file or `.opt` is
+  saved, or with *FHIRConnect: Sync Mappings with openFHIR*; files it cannot load are reported in
+  *Problems*.
+- Issues of the engine's `OperationOutcome` appear in *Problems* on the input file and in the
+  *FHIRConnect openFHIR* output channel.
+- *openFHIR* status bar item and *FHIRConnect: Check openFHIR Connection*; *FHIRConnect: Set openFHIR
+  Token* keeps a bearer token in the VS Code secret storage; confirmation before the first file goes
+  to an engine that is not on this computer.
+- Settings `fhirconnect.openfhir.url`, `syncOnSave`, `bootstrapFolder` and `format`.
+
+## 0.4.0
 
 Grammar FHIRConnect v1.0.0 and the *Mapping Context* view (phase 4). Files in v0.9.0 keep working;
 each file is checked with the version its `grammar` line declares.

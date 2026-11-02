@@ -1,0 +1,29 @@
+# openFHIR engine for the FHIRConnect extension (Run Mapping to openEHR / to FHIR).
+#
+#   docker compose up -d        start openFHIR on http://localhost:8080
+#   docker compose down         stop it (the mappings stay in your folder)
+#
+# MAPPINGS is the folder with your context and model mappings and the operational templates
+# (.opt). It is mounted read-only as the engine's bootstrap folder. Set it in a .env file next to
+# this one, or on the command line:
+#   Windows (PowerShell): $env:MAPPINGS="C:\codigo\vscode-fhir-connect\test\fixtures\mapping-lib-1.0.0"; docker compose up -d
+#   macOS / Linux:        MAPPINGS=~/mappings docker compose up -d
+services:
+  openfhir:
+    image: openfhir/openfhir:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - "${MAPPINGS:-.}:/app/bootstrap/:ro"
+    environment:
+      SPRING_DATA_MONGODB_URI: "mongodb://mongodb:27017/openfhir"
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:7
+    volumes:
+      - openfhir-data:/data/db
+
+volumes:
+  openfhir-data:

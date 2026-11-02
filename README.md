@@ -3,9 +3,10 @@
 Editing support for [FHIRConnect](https://sevkohler.github.io/FHIRconnect-spec/) mapping files, the
 YAML mapping language for bidirectional transformation between openEHR and FHIR.
 
-The extension supports grammar **v0.9.0**, the version executed by the
-[openFHIR engine](https://github.com/medblocks/openFHIR), and **v1.0.0**, the version of the
-specification and of the current mapping library. Each file is checked with the version it declares.
+The extension supports grammar **v0.9.0** and **v1.0.0**, the version of the specification and of
+the current mapping library. Each file is checked with the version it declares. With an
+[openFHIR engine](https://github.com/openFHIR/openfhir) running in Docker, it also runs the mappings
+on a FHIR resource or an openEHR Composition and shows the result.
 
 ## Documentation
 
@@ -66,6 +67,10 @@ specification and of the current mapping library. Each file is checked with the 
   resolved FHIR and openEHR paths and the extension methods that change it, and how the file fits in
   the project: extended model, extensions, slots and contexts that use it, templates of its
   archetype. In a context file, what the context loads.
+- **Running mappings with openFHIR**: *Run Mapping to openEHR* and *Run Mapping to FHIR* send the
+  open FHIR resource or Composition to an openFHIR engine (3.0.3 or later) and open the result beside
+  it, with the engine's issues in *Problems*. The engine reloads the mapping files on save. See
+  [`docs/openfhir/docker-compose.yml`](docs/openfhir/docker-compose.yml) to start it.
 - **New mapping file** command (*FHIRConnect: New Mapping File*) for model, extension and context
   files.
 
@@ -89,7 +94,7 @@ affected.
 ```shell
 npm ci
 npm run package                      # creates vscode-fhir-connect-<version>.vsix
-code --install-extension vscode-fhir-connect-0.4.0.vsix
+code --install-extension vscode-fhir-connect-0.5.0.vsix
 ```
 
 Or in VS Code: *Extensions* view → `…` → *Install from VSIX…*.
@@ -124,6 +129,7 @@ The extension is a thin client (`src/client`) that starts a language server (`sr
 | `server/paths` | Path syntax, the resolver (engine semantics per method) and the path features: hover, hints, completion, definition. |
 | `server/completion.ts`, `hover.ts`, `symbols.ts` | The language features. |
 | `server/mappingContext.ts`, `client/contextView.ts` | The Mapping Context view: the tree is built by the server, the client shows it. |
+| `client/openfhir/client.ts`, `client/openfhir/feature.ts` | The openFHIR HTTP client (no VS Code dependency, tested against a fake engine) and the commands, sync, status bar and diagnostics built on it. |
 
 `server/models/fhir-r4.json` is generated from the official FHIR R4 (4.0.1) definition bundles
 `profiles-resources.json` and `profiles-types.json`:
@@ -150,7 +156,9 @@ tests run on it.
    inlay hints, path completion, Go to Definition into the template and path diagnostics.
 4. **Phase 4 (0.4.0):** grammar v1.0.0 next to v0.9.0 (`link`, `slotContext`, sub-contexts,
    operational mappings, `^` and `../`), and the Mapping Context view.
-5. **Later:** running mappings against the openFHIR engine, AQL conversion, web templates.
+5. **Phase 5 (0.5.0):** running mappings with a local openFHIR engine: sync on save, *Run Mapping
+   to openEHR* / *to FHIR*, engine issues in *Problems*.
+6. **Later:** AQL conversion, web templates, ADL 2.
 
 ## License
 
