@@ -160,6 +160,17 @@ tests run on it.
    to openEHR* / *to FHIR*, engine issues in *Problems*.
 6. **Later:** AQL conversion, web templates, ADL 2.
 
+## Author
+
+Developed by **David Moner** ([david.moner@veratech.es](mailto:david.moner@veratech.es)),
+[Veratech for Health](https://www.veratech.es).
+
+## Disclaimer
+
+This code was developed with the assistance of an AI (Claude, by Anthropic). It is based on the
+[openFHIR IntelliJ plugin](https://github.com/openFHIR/intellij-fhir-connect) (Apache License 2.0),
+whose behaviour it follows for navigation, references, rename and name completion.
+
 ## License
 
 [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for third-party material.
