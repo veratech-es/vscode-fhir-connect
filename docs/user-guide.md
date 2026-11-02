@@ -10,6 +10,7 @@ keyboard shortcuts and features, see the [cheat sheet](cheatsheet.md).
 | 0.3.0 | 3 | Paths against templates and FHIR R4: hover, inlay hints, path completion, Go to Definition into the template, path warnings |
 | 0.4.0 | 4 | Grammar v1.0.0 next to v0.9.0; *Mapping Context* view |
 | 0.5.0 | 5 | Running mappings with an openFHIR engine: sync, *Run Mapping to openEHR* / *to FHIR*, engine issues in *Problems* |
+| 0.5.1 | — | Ready for the Marketplace and Open VSX: icon, metadata, [publishing guide](publishing.md) |
 
 Shortcuts are the VS Code defaults for Windows and Linux; on macOS use `Cmd` for `Ctrl` and `Option`
 for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
@@ -35,12 +36,13 @@ for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
 
 ### Install
 
-The extension is installed from a `.vsix` file built from this repository:
+The extension is not on the Marketplace yet; it is installed from a `.vsix` file built from this
+repository (or a copy of one):
 
 ```shell
 npm ci
 npm run package
-code --install-extension vscode-fhir-connect-0.2.0.vsix
+code --install-extension vscode-fhir-connect-<version>.vsix
 ```
 
 On Windows PowerShell, use `npm.cmd` instead of `npm` if the execution policy blocks `npm.ps1`. You
@@ -49,6 +51,9 @@ after installing a new version.
 
 `npm ci` may warn that some packages have install scripts that were not run (`esbuild`, `keytar`,
 `@vscode/vsce-sign`). The warning is harmless: none of these scripts is needed to build the extension.
+
+The steps to publish a release on the Visual Studio Marketplace and Open VSX are in
+[publishing.md](publishing.md).
 
 ### Open a workspace
 

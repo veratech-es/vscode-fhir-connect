@@ -13,6 +13,8 @@ on a FHIR resource or an openEHR Composition and shows the result.
 - [User guide](docs/user-guide.md): every feature in detail, settings, troubleshooting and the list of
   diagnostics.
 - [Cheat sheet](docs/cheatsheet.md): keyboard shortcuts and features on one page.
+- [Publishing](docs/publishing.md): how to publish a release on the Visual Studio Marketplace and
+  Open VSX.
 
 ## Features
 
@@ -94,7 +96,7 @@ affected.
 ```shell
 npm ci
 npm run package                      # creates vscode-fhir-connect-<version>.vsix
-code --install-extension vscode-fhir-connect-0.5.0.vsix
+code --install-extension vscode-fhir-connect-<version>.vsix
 ```
 
 Or in VS Code: *Extensions* view → `…` → *Install from VSIX…*.

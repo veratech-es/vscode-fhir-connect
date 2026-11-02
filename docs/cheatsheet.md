@@ -1,6 +1,6 @@
 # FHIRConnect for VS Code: cheat sheet
 
-Version 0.5.0 (phases 1 to 5). The [user guide](user-guide.md) explains each feature in detail.
+Version 0.5.1 (phases 1 to 5). The [user guide](user-guide.md) explains each feature in detail.
 
 The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` or
 `grammar: FHIRConnect/v1.0.0` line; each file is checked with the version it declares.

@@ -2,9 +2,15 @@
   "name": "vscode-fhir-connect",
   "displayName": "FHIRConnect",
   "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, path resolution against openEHR templates and FHIR R4, and running mappings with openFHIR.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "veratech-es",
   "license": "Apache-2.0",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#10344E",
+    "theme": "dark"
+  },
+  "pricing": "Free",
   "private": true,
   "repository": {
     "type": "git",
@@ -25,7 +31,11 @@
     "FHIRConnect",
     "FHIR",
     "openEHR",
+    "openFHIR",
     "mapping",
+    "HL7",
+    "healthcare",
+    "interoperability",
     "yaml"
   ],
   "activationEvents": [
