@@ -3,13 +3,17 @@
   "displayName": "FHIRConnect",
   "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, path resolution against openEHR templates and FHIR R4, and running mappings with openFHIR.",
   "version": "0.5.0",
-  "publisher": "damoca",
+  "publisher": "veratech-es",
   "license": "Apache-2.0",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/damoca/vscode-fhir-connect.git"
+    "url": "https://github.com/veratech-es/vscode-fhir-connect.git"
   },
+  "bugs": {
+    "url": "https://github.com/veratech-es/vscode-fhir-connect/issues"
+  },
+  "homepage": "https://github.com/veratech-es/vscode-fhir-connect#readme",
   "engines": {
     "vscode": "^1.90.0"
   },
