@@ -22,6 +22,10 @@ published by HL7 International (http://hl7.org/fhir/R4/downloads.html), which ar
 released under the Creative Commons "No Rights Reserved" (CC0) license. FHIR is a
 registered trademark of HL7 and is used with the permission of HL7.
 
+The openFHIR commands call the REST API of the openFHIR engine
+(https://github.com/openFHIR/openfhir), licensed under the Apache License, Version 2.0; the engine
+itself is not included. docs/openfhir/docker-compose.yml is adapted from the one of that project.
+
 The path resolution follows the behaviour of the openFHIR engine
 (https://github.com/medblocks/openFHIR), licensed under the Apache License, Version 2.0.
 
