@@ -54,18 +54,18 @@ beforeEach(() => {
 });
 
 describe('openFHIR client', () => {
-  it('reloads the bootstrap folder and reads the summary', async () => {
-    handler = (call, res) => (call.method === 'POST' && call.url === '/$bootstrap' ? send(res, 200, '') : send(res, 200, SUMMARY));
+  it('reloads the bootstrap folder and returns the summary', async () => {
+    handler = (call, res) => send(res, 200, SUMMARY);
     const summary = await new OpenFhirClient({ baseUrl }).bootstrap();
-    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(['POST /$bootstrap', 'GET /bootstrap']);
+    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(['POST /$bootstrap']);
     expect(summary).toMatchObject({ created: 1, failed: 1 });
     expect(summary.files[1].message).toBe('slotArchetype together with slotContext');
   });
 
-  it('takes the summary straight from POST /$bootstrap when it returns one', async () => {
-    handler = (call, res) => send(res, 200, SUMMARY);
-    await new OpenFhirClient({ baseUrl }).bootstrap();
-    expect(calls).toHaveLength(1);
+  it('counts the loaded files', async () => {
+    handler = (call, res) => send(res, 200, [{ path: 'a.yml', entityType: 'MODEL' }, { path: 'b.context.yaml', entityType: 'CONTEXT' }], 'application/json');
+    expect(await new OpenFhirClient({ baseUrl }).loadedFiles()).toBe(2);
+    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(['GET /bootstrap']);
   });
 
   it('maps a Bundle to openEHR with the template and format as query parameters', async () => {
@@ -129,7 +129,7 @@ describe('openFHIR client', () => {
 
   it('reports a plain-text error body', async () => {
     handler = (call, res) => send(res, 500, 'Mapper not found', 'text/plain');
-    await expect(new OpenFhirClient({ baseUrl }).bootstrapStatus()).rejects.toThrow('openFHIR answered 500 to GET /bootstrap: Mapper not found');
+    await expect(new OpenFhirClient({ baseUrl }).loadedFiles()).rejects.toThrow('openFHIR answered 500 to GET /bootstrap: Mapper not found');
   });
 
   it('reports an engine that is not running', async () => {
@@ -137,17 +137,18 @@ describe('openFHIR client', () => {
     await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve));
     const port = (closed.address() as AddressInfo).port;
     await new Promise<void>((resolve) => closed.close(() => resolve()));
-    await expect(new OpenFhirClient({ baseUrl: `http://127.0.0.1:${port}` }).bootstrapStatus()).rejects.toThrow(`Cannot reach openFHIR at http://127.0.0.1:${port}: it is not reachable.`);
+    await expect(new OpenFhirClient({ baseUrl: `http://127.0.0.1:${port}` }).loadedFiles()).rejects.toThrow(`Cannot reach openFHIR at http://127.0.0.1:${port}: it is not reachable.`);
   });
 
   it('reports a timeout', async () => {
     handler = () => undefined;
-    await expect(new OpenFhirClient({ baseUrl, timeoutMs: 100 }).bootstrapStatus()).rejects.toThrow('it did not answer in time');
+    await expect(new OpenFhirClient({ baseUrl, timeoutMs: 100 }).loadedFiles()).rejects.toThrow('it did not answer in time');
   });
 
-  it('rejects an answer that is not a bootstrap summary', async () => {
-    handler = (call, res) => send(res, 200, { status: 'UP' });
-    await expect(new OpenFhirClient({ baseUrl }).bootstrapStatus()).rejects.toThrow('Is it openFHIR 3.0.3 or later?');
+  it('rejects answers of another service', async () => {
+    handler = (call, res) => send(res, 200, { status: 'UP' }, 'application/json');
+    await expect(new OpenFhirClient({ baseUrl }).loadedFiles()).rejects.toThrow('Is it openFHIR 3.0.3 or later?');
+    await expect(new OpenFhirClient({ baseUrl }).bootstrap()).rejects.toThrow('Is it openFHIR 3.0.3 or later?');
   });
 });
 

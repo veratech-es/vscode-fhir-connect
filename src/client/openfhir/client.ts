@@ -14,7 +14,7 @@ export interface OutcomeIssue {
   expression?: string[];
 }
 
-/** One file of a bootstrap run, as `GET /bootstrap` reports it. */
+/** One file of a bootstrap run, as `POST /$bootstrap` reports it. */
 export interface BootstrapFile {
   path: string;
   outcome: string;
@@ -70,15 +70,16 @@ export class OpenFhirClient {
     this.fetch = options.fetch ?? fetch;
   }
 
-  /** The summary of the last bootstrap run; also tells whether the engine answers. */
-  async bootstrapStatus(): Promise<BootstrapSummary> {
-    return toSummary(await this.json('GET', '/bootstrap'));
+  /** The number of files the engine has loaded from its bootstrap folder; also tells whether it answers. */
+  async loadedFiles(): Promise<number> {
+    const answer = await this.json('GET', '/bootstrap');
+    if (!Array.isArray(answer)) throw new OpenFhirError('The engine did not answer GET /bootstrap with a list of files. Is it openFHIR 3.0.3 or later?');
+    return answer.length;
   }
 
-  /** Makes the engine scan its bootstrap folder again, then returns what it loaded. */
+  /** Makes the engine scan its bootstrap folder again and returns what happened to each file. */
   async bootstrap(): Promise<BootstrapSummary> {
-    const answer = await this.json('POST', '/$bootstrap');
-    return isSummary(answer) ? toSummary(answer) : this.bootstrapStatus();
+    return toSummary(await this.json('POST', '/$bootstrap'));
   }
 
   /** Maps a FHIR Bundle or resource to an openEHR Composition. */
@@ -171,7 +172,7 @@ function isSummary(value: unknown): value is BootstrapSummary {
 }
 
 function toSummary(value: unknown): BootstrapSummary {
-  if (!isSummary(value)) throw new OpenFhirError('The engine did not answer with a bootstrap summary. Is it openFHIR 3.0.3 or later?');
+  if (!isSummary(value)) throw new OpenFhirError('The engine did not answer POST /$bootstrap with a bootstrap summary. Is it openFHIR 3.0.3 or later?');
   const count = (n: unknown) => (typeof n === 'number' ? n : 0);
   return { created: count(value.created), updated: count(value.updated), unchanged: count(value.unchanged), failed: count(value.failed), files: value.files };
 }

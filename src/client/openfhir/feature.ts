@@ -102,10 +102,9 @@ export class OpenFhirFeature {
   private async checkConnection(): Promise<void> {
     const { url } = this.config;
     try {
-      const summary = await (await this.client()).bootstrapStatus();
+      const loaded = await (await this.client()).loadedFiles();
       this.setStatus('connected');
-      this.showBootstrapProblems(summary);
-      void vscode.window.showInformationMessage(`openFHIR at ${url} answers: ${describe(summary)}.`);
+      void vscode.window.showInformationMessage(`openFHIR at ${url} answers: ${loaded} mapping and template files loaded.`);
     } catch (error) {
       this.fail(error, 'Check connection');
     }

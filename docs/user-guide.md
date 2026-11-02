@@ -610,6 +610,7 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | *Is it openFHIR 3.0.3 or later?* | The URL points to another service or an older engine; pull the latest image (`docker compose pull`). |
 | The run buttons do not appear | The open file is JSON and is a FHIR resource (`resourceType`) or an openEHR Composition; fix JSON errors first. |
 | openFHIR maps nothing or picks another context | Pick the template explicitly; check that the context is loaded (*Sync Mappings with openFHIR* counts it) and has no failure in *Problems*. |
+| *Model mapper with this name … already exists* in *Problems* | openFHIR keeps one namespace of `metadata.name` for the whole bootstrap folder; two projects with a mapping of the same name cannot be loaded together. Mount only the folders of one project (its `model` and `projects/...` folders) or rename one of them. |
 | 404 on `$toopenehr` through a proxy | Some proxies encode the `$` of the operation; call the engine directly. |
 | Inlay hints clutter the editor | Set `fhirconnect.inlayHints.enable` to `false`. |
 | A new version does not show up | Reload the window (`Ctrl+Shift+P` → *Developer: Reload Window*). |
