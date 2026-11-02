@@ -7,7 +7,8 @@
   [docs/publishing.md](docs/publishing.md) with the publisher setup and the release steps.
 - Documentation review: the README lists the openFHIR settings and commands, the cheat sheet the
   *Peek Archetype Definition*, *Check openFHIR Connection* and *Set openFHIR Token* commands and the
-  Explorer context menu, and the user guide no longer names an old `.vsix` version.
+  Explorer context menu. The user guide and the cheat sheet no longer mention the development
+  phases nor an old `.vsix` version; the version history is in this change log.
 - The repository moved to [veratech-es/vscode-fhir-connect](https://github.com/veratech-es/vscode-fhir-connect);
   `package.json` now points `repository`, `bugs` and `homepage` there.
 - The publisher is now `veratech-es`, so the extension ID changes to

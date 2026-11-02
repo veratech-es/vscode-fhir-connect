@@ -1,16 +1,9 @@
 # FHIRConnect for VS Code: user guide
 
-This guide describes everything the extension does, phase by phase. For a one-page summary of the
+This guide describes everything the extension does. For a one-page summary of the
 keyboard shortcuts and features, see the [cheat sheet](cheatsheet.md).
 
-| Version | Phase | Adds |
-| --- | --- | --- |
-| 0.1.0 | 1 | Validation, completion, hover documentation, outline, *New Mapping File* command |
-| 0.2.0 | 2 | Navigation between mapping files: definition, references, rename, name completion, unresolved names |
-| 0.3.0 | 3 | Paths against templates and FHIR R4: hover, inlay hints, path completion, Go to Definition into the template, path warnings |
-| 0.4.0 | 4 | Grammar v1.0.0 next to v0.9.0; *Mapping Context* view |
-| 0.5.0 | 5 | Running mappings with an openFHIR engine: sync, *Run Mapping to openEHR* / *to FHIR*, engine issues in *Problems* |
-| 0.5.1 | — | Ready for the Marketplace and Open VSX: icon, metadata, [publishing guide](publishing.md) |
+The changes of each version are in the [change log](../CHANGELOG.md).
 
 Shortcuts are the VS Code defaults for Windows and Linux; on macOS use `Cmd` for `Ctrl` and `Option`
 for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
@@ -51,9 +44,6 @@ after installing a new version.
 
 `npm ci` may warn that some packages have install scripts that were not run (`esbuild`, `keytar`,
 `@vscode/vsce-sign`). The warning is harmless: none of these scripts is needed to build the extension.
-
-The steps to publish a release on the Visual Studio Marketplace and Open VSX are in
-[publishing.md](publishing.md).
 
 ### Open a workspace
 
@@ -151,7 +141,7 @@ file. Every problem has the source `FHIRConnect` and a code (listed in
   - `extension: append` needs `appendTo` with the name of the method to append to.
   - A condition uses either `targetAttribute` or `targetAttributes`, and either `criteria` or
     `criterias`, not both.
-- **Unresolved names** (phase 2): references to mapping files or methods that do not exist in the
+- **Unresolved names**: references to mapping files or methods that do not exist in the
   workspace. See [section 8.6](#86-unresolved-names).
 
 An empty value (`criteria:` with nothing after it) is not reported; it is left to the engine.
@@ -211,7 +201,7 @@ in `with.fhir`, `with.openehr` and similar paths, the path variables:
 
 `with.type` offers the data types (`CODEABLECONCEPT`, `QUANTITY`, `DATETIME`, ...).
 
-### Mapping names (phase 2)
+### Mapping names
 
 Where a value names another mapping file, completion offers the names indexed in the workspace. See
 [section 8.4](#84-name-completion).
@@ -257,7 +247,7 @@ follows the layout of the mapping library. Fill the placeholders with `Tab`, the
 
 ## 8. Navigation between mapping files
 
-Phase 2 indexes every mapping file in the workspace and links the files that name each other. It
+The extension indexes every mapping file in the workspace and links the files that name each other. It
 follows the behaviour of the [openFHIR IntelliJ plugin](https://github.com/openFHIR/intellij-fhir-connect).
 
 ### 8.1 Names and references
@@ -353,7 +343,7 @@ Put the cursor on a `metadata.name`, or on a reference, and press `F2`. Type the
 
 ## 9. Paths against templates and FHIR R4
 
-From phase 3 the extension reads the paths of every mapping method (`with.fhir`, `with.openehr`,
+The extension reads the paths of every mapping method (`with.fhir`, `with.openehr`,
 conditions, `manual` entries) and works out what each one points at: an element of a FHIR R4 type on
 one side, a node of an openEHR operational template on the other. This drives hover, inlay hints,
 path completion, Go to Definition into the template and path warnings.
@@ -449,7 +439,7 @@ side, with `[]` when the element repeats (`CodeableConcept[]`). Turn them off wi
   choice element.
 - Inside `as(` / `ofType(`: the types the element can be cast to, plus the resources a Reference may
   point at (`$resource.encounter.as(` offers `Reference` and `Encounter`).
-- Path variables (`$archetype`, `$resource`, …) at the start of the value, as in phase 1.
+- Path variables (`$archetype`, `$resource`, …) at the start of the value (see [Values](#values)).
 
 ### 9.6 Go to Definition into the model
 

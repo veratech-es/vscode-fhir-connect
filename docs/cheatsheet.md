@@ -1,11 +1,11 @@
 # FHIRConnect for VS Code: cheat sheet
 
-Version 0.5.1 (phases 1 to 5). The [user guide](user-guide.md) explains each feature in detail.
+Version 0.5.1. The [user guide](user-guide.md) explains each feature in detail.
 
 The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` or
 `grammar: FHIRConnect/v1.0.0` line; each file is checked with the version it declares.
-Path features (phase 3) also need the operational templates (`.opt`) somewhere in the workspace;
-FHIR R4 is bundled. Running mappings (phase 5) needs an openFHIR engine, e.g. in Docker.
+Path features also need the operational templates (`.opt`) somewhere in the workspace;
+FHIR R4 is bundled. Running mappings needs an openFHIR engine, e.g. in Docker.
 
 ## Keyboard shortcuts
 
@@ -35,39 +35,38 @@ FHIR R4 is bundled. Running mappings (phase 5) needs an openFHIR engine, e.g. in
 
 ## Features at a glance
 
-| Feature | How | Phase |
-| --- | --- | --- |
-| Validation | Automatic while typing; squiggles and *Problems* panel | 1 |
-| Key completion | Type a key or `Ctrl+Space`; required keys first | 1 |
-| Structure snippets | Pick `with`, `fhirCondition`, `followedBy`, `reference`, ... | 1 |
-| New method | `- ` on a new line in `mappings:` | 1 |
-| Value completion | After `key: ` for fixed values, after `$` for variables | 1 |
-| Hover docs | Mouse over a key or `$variable` | 1 |
-| Outline | *Outline* view, breadcrumbs, `Ctrl+Shift+O` | 1 |
-| New file | *FHIRConnect: New Mapping File* | 1 |
-| Jump to mapping file | `F12` on a reference | 2 |
-| Who uses this mapping | `Shift+F12` on `metadata.name` | 2 |
-| Rename a mapping everywhere | `F2` on `metadata.name` or a reference | 2 |
-| Name completion | After `slotArchetype:`, `extends:`, `start:`, `appendTo:`, `- ` in `archetypes` / `extensions` | 2 |
-| Reference hover | Mouse over a reference: target file with link | 2 |
-| Unresolved names | Automatic warning on names no file declares | 2 |
-| Path hover | Mouse over a path segment: node label, RM type, cardinality, template / FHIR type | 3 |
-| Inlay hints | Grey hint after each `with.fhir` / `with.openehr` line | 3 |
-| Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)`, types inside `as(` | 3 |
-| Jump into the template | `F12` on an openEHR path segment or `context.template.id` | 3 |
-| Jump into the archetype | `Ctrl+Alt+F12` on an openEHR path segment (needs the `.adl` in the workspace) | 3 |
-| Path warnings | Automatic warning on the first segment that does not resolve | 3 |
-| Grammar v1.0.0 | Automatic, from the `grammar` line; v0.9.0 files keep working | 4 |
-| Path operators | `^.code` (FHIR) and `../items[at0001]` (openEHR) go back one element of the parent path (v1.0.0) | 4 |
-| Mapping context | *FHIRConnect Mapping Context* view in the Explorer, `Ctrl+Alt+M` | 4 |
-| Start openFHIR | `docker compose up -d` with [`docs/openfhir/docker-compose.yml`](openfhir/docker-compose.yml) and `MAPPINGS` = your mapping folder | 5 |
-| Check the engine | Click *openFHIR* in the status bar, or *FHIRConnect: Check openFHIR Connection* | 5 |
-| Reload mappings in the engine | Automatic on save, or *FHIRConnect: Sync Mappings with openFHIR*; load failures go to *Problems* | 5 |
-| FHIR → openEHR | Open a FHIR resource or Bundle (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to openEHR*, pick the template | 5 |
-| openEHR → FHIR | Open a canonical or flat Composition (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to FHIR*, pick the template | 5 |
-| Engine issues | *Problems* (source *openFHIR*) and *Output* → *FHIRConnect openFHIR* | 5 |
-| Engine on another computer | `fhirconnect.openfhir.url`; *FHIRConnect: Set openFHIR Token* for a bearer token (empty value removes it) | 5 |
-| Publish a release | Steps in [publishing.md](publishing.md) (Marketplace and Open VSX) | 0.5.1 |
+| Feature | How |
+| --- | --- |
+| Validation | Automatic while typing; squiggles and *Problems* panel |
+| Key completion | Type a key or `Ctrl+Space`; required keys first |
+| Structure snippets | Pick `with`, `fhirCondition`, `followedBy`, `reference`, ... |
+| New method | `- ` on a new line in `mappings:` |
+| Value completion | After `key: ` for fixed values, after `$` for variables |
+| Hover docs | Mouse over a key or `$variable` |
+| Outline | *Outline* view, breadcrumbs, `Ctrl+Shift+O` |
+| New file | *FHIRConnect: New Mapping File* |
+| Jump to mapping file | `F12` on a reference |
+| Who uses this mapping | `Shift+F12` on `metadata.name` |
+| Rename a mapping everywhere | `F2` on `metadata.name` or a reference |
+| Name completion | After `slotArchetype:`, `extends:`, `start:`, `appendTo:`, `- ` in `archetypes` / `extensions` |
+| Reference hover | Mouse over a reference: target file with link |
+| Unresolved names | Automatic warning on names no file declares |
+| Path hover | Mouse over a path segment: node label, RM type, cardinality, template / FHIR type |
+| Inlay hints | Grey hint after each `with.fhir` / `with.openehr` line |
+| Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)`, types inside `as(` |
+| Jump into the template | `F12` on an openEHR path segment or `context.template.id` |
+| Jump into the archetype | `Ctrl+Alt+F12` on an openEHR path segment (needs the `.adl` in the workspace) |
+| Path warnings | Automatic warning on the first segment that does not resolve |
+| Grammar v1.0.0 | Automatic, from the `grammar` line; v0.9.0 files keep working |
+| Path operators | `^.code` (FHIR) and `../items[at0001]` (openEHR) go back one element of the parent path (v1.0.0) |
+| Mapping context | *FHIRConnect Mapping Context* view in the Explorer, `Ctrl+Alt+M` |
+| Start openFHIR | `docker compose up -d` with [`docs/openfhir/docker-compose.yml`](openfhir/docker-compose.yml) and `MAPPINGS` = your mapping folder |
+| Check the engine | Click *openFHIR* in the status bar, or *FHIRConnect: Check openFHIR Connection* |
+| Reload mappings in the engine | Automatic on save, or *FHIRConnect: Sync Mappings with openFHIR*; load failures go to *Problems* |
+| FHIR → openEHR | Open a FHIR resource or Bundle (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to openEHR*, pick the template |
+| openEHR → FHIR | Open a canonical or flat Composition (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to FHIR*, pick the template |
+| Engine issues | *Problems* (source *openFHIR*) and *Output* → *FHIRConnect openFHIR* |
+| Engine on another computer | `fhirconnect.openfhir.url`; *FHIRConnect: Set openFHIR Token* for a bearer token (empty value removes it) |
 
 ## Reference sites
 
