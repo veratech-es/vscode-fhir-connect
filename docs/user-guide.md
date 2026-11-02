@@ -619,6 +619,7 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | 404 on `$toopenehr` through a proxy | Some proxies encode the `$` of the operation; call the engine directly. |
 | Inlay hints clutter the editor | Set `fhirconnect.inlayHints.enable` to `false`. |
 | A new version does not show up | Reload the window (`Ctrl+Shift+P` → *Developer: Reload Window*). |
+| Two FHIRConnect extensions are installed | Versions before the move to `veratech-es` were installed as `damoca.vscode-fhir-connect`; uninstall that one. The `fhirconnect.*` settings are kept. |
 | Something looks wrong | Set `fhirconnect.trace.server` to `verbose` and look at *View* → *Output* → *FHIRConnect*. |
 
 ## 14. Diagnostic reference

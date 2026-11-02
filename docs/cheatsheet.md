@@ -30,7 +30,7 @@ FHIR R4 is bundled. Running mappings (phase 5) needs an openFHIR engine, e.g. in
 | Problems panel | `Ctrl+Shift+M` | `Cmd+Shift+M` | validation |
 | Next / previous problem | `F8` / `Shift+F8` | `F8` / `Shift+F8` | validation |
 | Show Mapping Context | `Ctrl+Alt+M` | `Cmd+Option+M` | mapping files |
-| Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` | *FHIRConnect: New Mapping File*, *Run Mapping to openEHR / to FHIR*, *Sync Mappings with openFHIR* |
+| Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` | *FHIRConnect: New Mapping File*, *Peek Archetype Definition*, *Run Mapping to openEHR / to FHIR*, *Sync Mappings with openFHIR*, *Check openFHIR Connection*, *Set openFHIR Token* |
 | Save all (after a rename) | `Ctrl+K S` | `Cmd+Option+S` | rename |
 
 ## Features at a glance
@@ -63,9 +63,11 @@ FHIR R4 is bundled. Running mappings (phase 5) needs an openFHIR engine, e.g. in
 | Start openFHIR | `docker compose up -d` with [`docs/openfhir/docker-compose.yml`](openfhir/docker-compose.yml) and `MAPPINGS` = your mapping folder | 5 |
 | Check the engine | Click *openFHIR* in the status bar, or *FHIRConnect: Check openFHIR Connection* | 5 |
 | Reload mappings in the engine | Automatic on save, or *FHIRConnect: Sync Mappings with openFHIR*; load failures go to *Problems* | 5 |
-| FHIR → openEHR | Open a FHIR resource or Bundle (`.json`), play button → *Run Mapping to openEHR*, pick the template | 5 |
-| openEHR → FHIR | Open a canonical or flat Composition (`.json`), play button → *Run Mapping to FHIR*, pick the template | 5 |
+| FHIR → openEHR | Open a FHIR resource or Bundle (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to openEHR*, pick the template | 5 |
+| openEHR → FHIR | Open a canonical or flat Composition (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to FHIR*, pick the template | 5 |
 | Engine issues | *Problems* (source *openFHIR*) and *Output* → *FHIRConnect openFHIR* | 5 |
+| Engine on another computer | `fhirconnect.openfhir.url`; *FHIRConnect: Set openFHIR Token* for a bearer token (empty value removes it) | 5 |
+| Publish a release | Steps in [publishing.md](publishing.md) (Marketplace and Open VSX) | 0.5.1 |
 
 ## Reference sites
 

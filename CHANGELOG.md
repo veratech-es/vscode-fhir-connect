@@ -5,6 +5,9 @@
 - Ready for the Visual Studio Marketplace and Open VSX (not published yet): extension icon
   (`images/icon.png`), Marketplace banner colour, more keywords, and
   [docs/publishing.md](docs/publishing.md) with the publisher setup and the release steps.
+- Documentation review: the README lists the openFHIR settings and commands, the cheat sheet the
+  *Peek Archetype Definition*, *Check openFHIR Connection* and *Set openFHIR Token* commands and the
+  Explorer context menu, and the user guide no longer names an old `.vsix` version.
 - The repository moved to [veratech-es/vscode-fhir-connect](https://github.com/veratech-es/vscode-fhir-connect);
   `package.json` now points `repository`, `bugs` and `homepage` there.
 - The publisher is now `veratech-es`, so the extension ID changes to
