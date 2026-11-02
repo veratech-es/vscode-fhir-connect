@@ -4,6 +4,9 @@
 
 - The repository moved to [veratech-es/vscode-fhir-connect](https://github.com/veratech-es/vscode-fhir-connect);
   `package.json` now points `repository`, `bugs` and `homepage` there.
+- The publisher is now `veratech-es`, so the extension ID changes to
+  `veratech-es.vscode-fhir-connect`. Uninstall the old `damoca.vscode-fhir-connect` before
+  installing the new `.vsix`; `fhirconnect.*` settings are kept.
 
 ## 0.5.0 (unreleased)
 

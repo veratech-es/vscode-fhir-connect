@@ -3,7 +3,7 @@
   "displayName": "FHIRConnect",
   "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, path resolution against openEHR templates and FHIR R4, and running mappings with openFHIR.",
   "version": "0.5.0",
-  "publisher": "damoca",
+  "publisher": "veratech-es",
   "license": "Apache-2.0",
   "private": true,
   "repository": {
