@@ -5,14 +5,17 @@ import { parseFcDocument, type FcDocument } from './document';
 import type { Problem } from './validation';
 
 /** The places whose value names another mapping file (or, for `appendTo`, a method of the extended model). */
-export type RefKind = 'slotArchetype' | 'extends' | 'archetypes' | 'extensions' | 'start' | 'appendTo';
+export type RefKind = 'slotArchetype' | 'slotContext' | 'extends' | 'archetypes' | 'extensions' | 'contexts' | 'operational' | 'start' | 'appendTo';
 
 /** File type each reference kind points at; `appendTo` points at a method instead. */
 export const REF_TARGET: Record<Exclude<RefKind, 'appendTo'>, FileType> = {
   slotArchetype: 'model',
+  slotContext: 'context',
   extends: 'model',
   archetypes: 'model',
   extensions: 'extension',
+  contexts: 'context',
+  operational: 'model',
   start: 'model',
 };
 
@@ -89,7 +92,7 @@ export function extractEntry(uri: string, doc: FcDocument): FileEntry {
   }
 
   const context = mapAt(root, 'context');
-  for (const kind of ['archetypes', 'extensions'] as const) {
+  for (const kind of ['archetypes', 'extensions', 'contexts', 'operational'] as const) {
     const list = valueAt(context, kind);
     if (!isSeq(list)) continue;
     for (const item of list.items as Node[]) {
@@ -111,7 +114,7 @@ function collectMethods(items: Node[], prefix: string, entry: FileEntry): void {
     const name = scalarAt(method, 'name');
     const path = name ? (prefix ? `${prefix}.${name.value}` : name.value) : prefix;
     if (name) entry.methods.push({ path, span: name.span });
-    for (const kind of ['slotArchetype', 'appendTo'] as const) {
+    for (const kind of ['slotArchetype', 'slotContext', 'appendTo'] as const) {
       const ref = scalarAt(method, kind);
       if (ref) entry.references.push({ kind, ...ref });
     }

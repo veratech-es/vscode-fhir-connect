@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mappingTemplate } from '../src/client/templates';
+import { GRAMMAR_VERSIONS, mappingTemplate } from '../src/client/templates';
 import { hover } from '../src/server/hover';
 import { documentSymbols } from '../src/server/symbols';
 import { validate } from '../src/server/validation';
@@ -84,9 +84,13 @@ describe('new file templates', () => {
       .replace(/\\\$/g, '$');
   }
 
-  it.each(['model', 'extension', 'context'] as const)('creates a valid %s file', (kind) => {
-    const doc = parse(expand(mappingTemplate(kind, 'EVALUATION.problem_diagnosis.v1')));
-    expect(doc.fileType).toBe(kind);
-    expect(validate(doc)).toEqual([]);
-  });
+  it.each(GRAMMAR_VERSIONS.flatMap((version) => (['model', 'extension', 'context'] as const).map((kind) => [kind, version] as const)))(
+    'creates a valid %s file in v%s',
+    (kind, version) => {
+      const doc = parse(expand(mappingTemplate(kind, 'EVALUATION.problem_diagnosis.v1', version)));
+      expect(doc.fileType).toBe(kind);
+      expect(doc.supportedGrammar?.version).toBe(version);
+      expect(validate(doc)).toEqual([]);
+    },
+  );
 });

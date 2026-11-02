@@ -9,9 +9,13 @@
  *   path (`parent/child`). `$reference` has no openEHR path: children continue the parent's.
  * - Methods in `reference.mappings` continue in the referenced resource (`parent.resolve().child`).
  * - In a model used as a `slotArchetype`, `$resource` and `$fhirRoot` stand for the FHIR path of the
- *   slot method and `$archetype` for its openEHR path.
+ *   slot method and `$archetype` for its openEHR path. The same holds for the `start` model of a
+ *   context entered with `slotContext` (grammar v1.0.0).
  * - Extension methods resolve inside the extended model: `add` at its top level, `overwrite` where
  *   the overwritten method is, `append` below the method named by `appendTo`.
+ *
+ * Grammar v1.0.0 adds `^` (FHIR) and `../` (openEHR) at the start of a path: each goes back one
+ * element of the parent path before the rest of the path is followed.
  *
  * Paths are only reported when the resolver is sure they are wrong; whatever it cannot follow (an
  * unfilled slot, a function it does not know, a template that is not in the workspace) is left alone.
@@ -37,6 +41,8 @@ export interface FhirState {
   /** `Type.element` of that element */
   elementPath?: string;
   path: string;
+  /** the element before this one, which `^` goes back to */
+  up?: FhirState;
 }
 
 export interface OpenEhrState {
@@ -47,6 +53,8 @@ export interface OpenEhrState {
   /** the RM attribute the path ends on, past the constrained part */
   rmAttribute?: RmAttribute;
   path: string;
+  /** the step before this one, which `../` goes back to */
+  up?: OpenEhrState;
 }
 
 export interface Step<S> {
@@ -106,6 +114,8 @@ export class PathResolver {
   private cache = new Map<string, FileResolution>();
   private inProgress = new Set<string>();
   private generation = '';
+  /** whether the file being resolved may use `^` and `../` */
+  private operators = false;
 
   constructor(
     private readonly index: WorkspaceIndex,
@@ -137,6 +147,16 @@ export class PathResolver {
   }
 
   private resolveFile(entry: FileEntry): FileResolution {
+    const previous = this.operators;
+    this.operators = !!entry.doc.supportedGrammar?.pathOperators;
+    try {
+      return this.resolveMethods(entry);
+    } finally {
+      this.operators = previous;
+    }
+  }
+
+  private resolveMethods(entry: FileEntry): FileResolution {
     const resolution: FileResolution = { sites: [], methods: new Map(), notes: [] };
     const doc = entry.doc;
     const root = doc.yaml.contents;
@@ -198,11 +218,17 @@ export class PathResolver {
     const own: FhirState =
       typed && !coreType(typed.type)?.abstract ? { known: true, types: [typed.type], path: typed.type } : UNKNOWN_FHIR;
 
-    const callers = this.index
-      .usages(entry)
-      .filter((u) => u.ref.kind === 'slotArchetype' && u.entry !== entry)
+    // slots that use this model, directly or as the `start` of a context entered with `slotContext`
+    const slots = this.index.usages(entry).flatMap((u) =>
+      u.ref.kind === 'slotArchetype' && u.entry !== entry
+        ? [u]
+        : u.ref.kind === 'start' && u.entry.fileType === 'context'
+          ? this.index.usages(u.entry).filter((c) => c.ref.kind === 'slotContext' && c.entry !== entry)
+          : [],
+    );
+    const callers = slots
       .map((u) => {
-        const method = findMethodWithSlot(u.entry.doc, u.ref.span.start);
+        const method = findMethodWithSlot(u.entry.doc, u.ref.span.start, u.ref.kind);
         const resolution = method ? this.resolve(u.entry) : undefined;
         const context = method && resolution?.methods.get(method)?.self;
         return context && resolution?.roots ? { context, roots: resolution.roots } : undefined;
@@ -268,9 +294,9 @@ export class PathResolver {
       const resourceType = scalarAt(reference, 'resourceType')?.value;
       const fhir: FhirState =
         resourceType && isResourceType(resourceType)
-          ? { known: true, types: [resourceType], path: `${self.fhir.path}.resolve()` }
+          ? { known: true, types: [resourceType], path: `${self.fhir.path}.resolve()`, up: self.fhir.up }
           : self.fhir.known && self.fhir.targets
-            ? { known: true, types: self.fhir.targets, path: `${self.fhir.path}.resolve()` }
+            ? { known: true, types: self.fhir.targets, path: `${self.fhir.path}.resolve()`, up: self.fhir.up }
             : UNKNOWN_FHIR;
       const context: Context = { fhir, openehr: self.openehr, ancestors: [] };
       for (const child of (referenced.items as Node[]).filter(isMap)) this.method(child, context, roots, resolution);
@@ -318,8 +344,9 @@ export class PathResolver {
         for (const item of (list.items as Node[]).filter(isMap)) {
           const path = scalarAt(item, 'path');
           if (!path) continue;
-          if (side === 'fhir') this.recordFhir(path, 'manual.fhir.path', { ...self, ancestors: [] }, roots, resolution, false);
-          else this.recordOpenEhr(path, 'manual.openehr.path', { ...self, ancestors: [] }, roots, resolution, false, false);
+          // `$fhirRoot` / `$openehrRoot` in a manual path is the method's own path
+          if (side === 'fhir') this.recordFhir(path, 'manual.fhir.path', { ...self, ancestors: [] }, roots, resolution, true);
+          else this.recordOpenEhr(path, 'manual.openehr.path', { ...self, ancestors: [] }, roots, resolution, true, false, self.openehr);
         }
       }
       this.conditions(entry, parent, self.openehr, roots, resolution);
@@ -358,10 +385,10 @@ export class PathResolver {
     resolution: FileResolution,
     variables: boolean,
   ): FhirState {
-    let site = resolveFhirPath(value.value, value.span.start, parent.fhir, roots.resource, variables);
-    if (site.problem && !/^\s*\$resource/.test(value.value)) {
+    let site = resolveFhirPath(value.value, value.span.start, parent.fhir, roots.resource, variables, this.operators);
+    if (site.problem && !/^\s*(\$resource|\^)/.test(value.value)) {
       for (const ancestor of parent.ancestors ?? []) {
-        const retry = resolveFhirPath(value.value, value.span.start, ancestor.fhir, roots.resource, variables);
+        const retry = resolveFhirPath(value.value, value.span.start, ancestor.fhir, roots.resource, variables, this.operators);
         if (!retry.problem) {
           site = retry;
           break;
@@ -382,10 +409,10 @@ export class PathResolver {
     isWith: boolean,
     openehrRoot = parent.openehr,
   ): OpenEhrState {
-    let site = resolveOpenEhrPath(value.value, value.span.start, parent.openehr, roots, variables, openehrRoot);
-    if (site.problem && !/^\s*\$(archetype|composition)/.test(value.value)) {
+    let site = resolveOpenEhrPath(value.value, value.span.start, parent.openehr, roots, variables, openehrRoot, this.operators);
+    if (site.problem && !/^\s*(\$(archetype|composition)|\.\.\/)/.test(value.value)) {
       for (const ancestor of [...(parent.ancestors ?? []).map((a) => a.openehr), roots.archetype]) {
-        const retry = resolveOpenEhrPath(value.value, value.span.start, ancestor, roots, variables, ancestor);
+        const retry = resolveOpenEhrPath(value.value, value.span.start, ancestor, roots, variables, ancestor, this.operators);
         if (!retry.problem) {
           site = retry;
           break;
@@ -452,14 +479,14 @@ function findMethod(doc: FcDocument, name: string, dotted: boolean): YAMLMap | u
   return search(methodsOf(top));
 }
 
-/** The method whose `slotArchetype` value starts at `offset`. */
-function findMethodWithSlot(doc: FcDocument, offset: number): YAMLMap | undefined {
+/** The method whose `slotArchetype` (or `slotContext`) value starts at `offset`. */
+function findMethodWithSlot(doc: FcDocument, offset: number, key = 'slotArchetype'): YAMLMap | undefined {
   let found: YAMLMap | undefined;
   const visit = (node: Node | null | undefined) => {
     if (found || !node) return;
     if (isSeq(node)) (node.items as Node[]).forEach(visit);
     else if (isMap(node)) {
-      if (scalarAt(node, 'slotArchetype')?.span.start === offset) found = node;
+      if (scalarAt(node, key)?.span.start === offset) found = node;
       else for (const pair of node.items) visit(pair.value as Node);
     }
   };
@@ -477,7 +504,30 @@ interface Resolved<S> {
   problem?: Problem;
 }
 
-export function resolveFhirPath(value: string, offset: number, parent: FhirState, resource: FhirState, variables: boolean): Resolved<FhirState> {
+export function resolveFhirPath(
+  value: string,
+  offset: number,
+  parent: FhirState,
+  resource: FhirState,
+  variables: boolean,
+  operators = false,
+): Resolved<FhirState> {
+  const up = operators ? /^(\s*)(\^+)\.?/.exec(value) : null;
+  if (up) {
+    // `^^.use`: back two elements of the parent path, then on with `use`
+    const start = offset + up[1].length;
+    let climbed: FhirState = parent;
+    for (let i = 0; i < up[2].length; i++) climbed = climbed.known && climbed.up ? climbed.up : UNKNOWN_FHIR;
+    const step: Step<FhirState> = { text: up[2], span: { start, end: start + up[2].length }, before: parent, after: climbed };
+    const tail = value.slice(up[0].length);
+    if (tail.trim() === '') {
+      // `^.` while typing: the next element starts here
+      const steps = up[0].endsWith('.') ? [step, { text: '', span: { start: offset + up[0].length, end: offset + up[0].length }, before: climbed, after: climbed }] : [step];
+      return { base: parent, steps, result: climbed };
+    }
+    const rest = resolveFhirPath(tail, offset + up[0].length, climbed, resource, false);
+    return { base: parent, steps: [step, ...rest.steps], result: rest.result, problem: rest.problem };
+  }
   const parts = fhirSteps(value, offset);
   let state = parent;
   let first = 0;
@@ -499,13 +549,15 @@ export function resolveFhirPath(value: string, offset: number, parent: FhirState
       break;
     }
     const outcome = fhirStep(state, part);
-    steps.push({ text: part.text, span: { start: part.start, end: part.start + part.text.length }, before: state, after: outcome.state });
+    // an element is one step back for `^`; a function such as `as(...)` stays on the same element
+    const after: FhirState = outcome.state.known ? { ...outcome.state, up: part.args === undefined ? state : state.up } : outcome.state;
+    steps.push({ text: part.text, span: { start: part.start, end: part.start + part.text.length }, before: state, after });
     if (outcome.problem) {
       problem = { start: part.start, end: part.start + part.text.length, severity: 'warning', code: outcome.code!, message: outcome.problem };
       state = UNKNOWN_FHIR;
       break;
     }
-    state = outcome.state;
+    state = after;
   }
   return { base, steps, result: state, problem };
 }
@@ -594,7 +646,24 @@ export function resolveOpenEhrPath(
   roots: Roots,
   variables: boolean,
   openehrRoot = parent,
+  operators = false,
 ): Resolved<OpenEhrState> {
+  const up = operators ? /^(\s*)((?:\.\.\/?)+)/.exec(value) : null;
+  if (up) {
+    // `../data[at0001]`: back one step of the parent path for each `../`, then on with the rest
+    const start = offset + up[1].length;
+    let climbed: OpenEhrState = parent;
+    for (let i = 0; i < (up[2].match(/\.\./g) ?? []).length; i++) climbed = climbed.known && climbed.up ? climbed.up : UNKNOWN_OPENEHR;
+    const text = up[2].replace(/\/$/, '');
+    const step: Step<OpenEhrState> = { text, span: { start, end: start + text.length }, before: parent, after: climbed };
+    const tail = value.slice(up[0].length);
+    if (tail.trim() === '') {
+      const steps = up[2].endsWith('/') ? [step, { text: '', span: { start: offset + up[0].length, end: offset + up[0].length }, before: climbed, after: climbed }] : [step];
+      return { base: parent, steps, result: climbed };
+    }
+    const rest = resolveOpenEhrPath(tail, offset + up[0].length, climbed, roots, false, climbed);
+    return { base: parent, steps: [step, ...rest.steps], result: rest.result, problem: rest.problem };
+  }
   const trimmed = value.trim();
   let state = parent;
   let rest = value;
@@ -634,13 +703,14 @@ export function resolveOpenEhrPath(
       break;
     }
     const outcome = openEhrStep(state, part);
-    steps.push({ text: part.text, span, before: state, after: outcome.state, implicit: outcome.implicit });
+    const after: OpenEhrState = outcome.state.known ? { ...outcome.state, up: state } : outcome.state;
+    steps.push({ text: part.text, span, before: state, after, implicit: outcome.implicit });
     if (outcome.problem) {
       problem = { ...span, severity: 'warning', code: outcome.code!, message: outcome.problem };
       state = UNKNOWN_OPENEHR;
       break;
     }
-    state = outcome.state;
+    state = after;
   }
   return { base, steps, result: state, problem };
 }

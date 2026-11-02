@@ -4,8 +4,8 @@ Editing support for [FHIRConnect](https://sevkohler.github.io/FHIRconnect-spec/)
 YAML mapping language for bidirectional transformation between openEHR and FHIR.
 
 The extension supports grammar **v0.9.0**, the version executed by the
-[openFHIR engine](https://github.com/medblocks/openFHIR). Files with another grammar version are
-recognised but not validated yet.
+[openFHIR engine](https://github.com/medblocks/openFHIR), and **v1.0.0**, the version of the
+specification and of the current mapping library. Each file is checked with the version it declares.
 
 ## Documentation
 
@@ -62,6 +62,10 @@ recognised but not validated yet.
     in the ADL 1.4 archetype (`.adl`) when the archetypes are in the workspace.
   - **Warnings** on the first segment that does not resolve, and on `overwrite` methods that replace
     nothing.
+- **Mapping Context** view (Explorer side bar, Ctrl+Alt+M): the method at the cursor with its
+  resolved FHIR and openEHR paths and the extension methods that change it, and how the file fits in
+  the project: extended model, extensions, slots and contexts that use it, templates of its
+  archetype. In a context file, what the context loads.
 - **New mapping file** command (*FHIRConnect: New Mapping File*) for model, extension and context
   files.
 
@@ -85,7 +89,7 @@ affected.
 ```shell
 npm ci
 npm run package                      # creates vscode-fhir-connect-<version>.vsix
-code --install-extension vscode-fhir-connect-0.3.0.vsix
+code --install-extension vscode-fhir-connect-0.4.0.vsix
 ```
 
 Or in VS Code: *Extensions* view → `…` → *Install from VSIX…*.
@@ -111,7 +115,7 @@ The extension is a thin client (`src/client`) that starts a language server (`sr
 
 | Module | Role |
 | --- | --- |
-| `server/grammar` | The grammar as data: which keys each block allows, their value shape, allowed values, documentation and snippets. Validation, completion and hover all read it. One file per grammar version. |
+| `server/grammar` | The grammar as data: which keys each block allows, their value shape, allowed values, documentation and snippets. Validation, completion and hover all read it. One file per grammar version (`v0_9_0.ts`, and `v1_0_0.ts` as a list of changes to it). |
 | `server/document.ts` | Detects FHIRConnect files and parses them with the `yaml` library. |
 | `server/validation.ts` | Walks the YAML tree against the grammar. |
 | `server/cursor.ts` | Works out the block under the cursor from indentation, so completion works in files that do not parse yet. |
@@ -119,6 +123,7 @@ The extension is a thin client (`src/client`) that starts a language server (`sr
 | `server/models` | The FHIR R4 index (`fhir-r4.json`), StructureDefinition profiles, the OPT and ADL readers and the openEHR RM classes. |
 | `server/paths` | Path syntax, the resolver (engine semantics per method) and the path features: hover, hints, completion, definition. |
 | `server/completion.ts`, `hover.ts`, `symbols.ts` | The language features. |
+| `server/mappingContext.ts`, `client/contextView.ts` | The Mapping Context view: the tree is built by the server, the client shows it. |
 
 `server/models/fhir-r4.json` is generated from the official FHIR R4 (4.0.1) definition bundles
 `profiles-resources.json` and `profiles-types.json`:
@@ -132,6 +137,9 @@ node scripts/build-fhir-index.mjs <folder with the two bundles>
 requires them to validate without errors; the warnings they produce, and the references that resolve
 to nothing, are kept in snapshots. The fixture also holds the 12 KDS operational templates of the library (main branch), so the path
 test resolves the library's paths and snapshots the ones that do not resolve.
+`test/fixtures/mapping-lib-1.0.0` holds the 106 mapping files and the operational templates of the
+main branch of the same library, written in grammar v1.0.0; the same corpus, reference and path
+tests run on it.
 
 ## Roadmap
 
@@ -140,7 +148,9 @@ test resolves the library's paths and snapshots the ones that do not resolve.
    completion and unresolved names.
 3. **Phase 3 (0.3.0):** openEHR templates and FHIR StructureDefinitions: path resolution, hover,
    inlay hints, path completion, Go to Definition into the template and path diagnostics.
-4. **Phase 4:** running mappings against the openFHIR engine, grammar v1.0.0, AQL conversion.
+4. **Phase 4 (0.4.0):** grammar v1.0.0 next to v0.9.0 (`link`, `slotContext`, sub-contexts,
+   operational mappings, `^` and `../`), and the Mapping Context view.
+5. **Later:** running mappings against the openFHIR engine, AQL conversion, web templates.
 
 ## License
 

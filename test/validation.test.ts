@@ -125,9 +125,76 @@ mappings:
   });
 
   it('only reports an unsupported grammar version', () => {
-    expect(problems(`grammar: FHIRConnect/v1.0.0
+    expect(problems(`grammar: FHIRConnect/v2.0.0
 type: model
 whatever: true
-`)).toEqual([expect.objectContaining({ code: 'unsupported-grammar', severity: 'information', text: 'grammar: FHIRConnect/v1.0.0' })]);
+`)).toEqual([expect.objectContaining({ code: 'unsupported-grammar', severity: 'information', text: 'grammar: FHIRConnect/v2.0.0' })]);
+  });
+});
+
+describe('grammar v1.0.0', () => {
+  const v1 = (text: string) => text.replace('FHIRConnect/v0.9.0', 'FHIRConnect/v1.0.0');
+
+  it('validates each file with the version it declares', () => {
+    const text = `${MODEL_HEADER}  unidirectional: openehr->fhir
+mappings:
+  - name: partOf
+    with:
+      fhir: $resource.partOf
+      openehr: $archetype/links
+    link:
+      meaning: Part of referenced event
+      type: partOf
+`;
+    expect(problems(v1(text))).toEqual([]);
+    expect(problems(text).map((p) => p.text)).toEqual(['unidirectional', 'link']);
+  });
+
+  it('drops fhirConfig.multiple and fhirConfig.condition', () => {
+    const text = MODEL_HEADER.replace('structureDefinition: http://hl7.org/fhir/StructureDefinition/Condition', 'structureDefinition: http://hl7.org/fhir/StructureDefinition/Condition\n    multiple: true');
+    expect(problems(text)).toEqual([]);
+    expect(problems(v1(text))).toEqual([expect.objectContaining({ code: 'unknown-key', text: 'multiple' })]);
+  });
+
+  it('knows sub-contexts and operational models of context files', () => {
+    expect(
+      problems(`grammar: FHIRConnect/v1.0.0
+type: context
+metadata:
+  name: IPS.context
+  version: 1.0.0
+spec:
+  system: FHIR
+  version: R4
+context:
+  scope: branch
+  profile:
+    url: http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips
+  template:
+    id: International Patient Summary
+  archetypes:
+    - COMPOSITION.health_summary.v1
+  contexts:
+    - IPS_problem.context
+  operational:
+    - provenance
+  start: COMPOSITION.health_summary.v1
+`),
+    ).toEqual([expect.objectContaining({ code: 'invalid-value', text: 'branch' })]);
+  });
+
+  it('checks slotContext against slotArchetype and $reference', () => {
+    const found = problems(
+      v1(`${MODEL_HEADER}
+mappings:
+  - name: section
+    with:
+      fhir: $resource.section
+      openehr: $reference
+    slotArchetype: SECTION.adhoc.v1
+    slotContext: IPS_problem.context
+`),
+    );
+    expect(found.map((p) => p.code)).toEqual(['conflicting-keys', 'slot-context-reference']);
   });
 });

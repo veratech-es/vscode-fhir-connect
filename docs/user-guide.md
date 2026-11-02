@@ -8,6 +8,7 @@ keyboard shortcuts and features, see the [cheat sheet](cheatsheet.md).
 | 0.1.0 | 1 | Validation, completion, hover documentation, outline, *New Mapping File* command |
 | 0.2.0 | 2 | Navigation between mapping files: definition, references, rename, name completion, unresolved names |
 | 0.3.0 | 3 | Paths against templates and FHIR R4: hover, inlay hints, path completion, Go to Definition into the template, path warnings |
+| 0.4.0 | 4 | Grammar v1.0.0 next to v0.9.0; *Mapping Context* view |
 
 Shortcuts are the VS Code defaults for Windows and Linux; on macOS use `Cmd` for `Ctrl` and `Option`
 for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
@@ -23,9 +24,10 @@ for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
 7. [New mapping file](#7-new-mapping-file)
 8. [Navigation between mapping files](#8-navigation-between-mapping-files)
 9. [Paths against templates and FHIR R4](#9-paths-against-templates-and-fhir-r4)
-10. [Settings](#10-settings)
-11. [Troubleshooting](#11-troubleshooting)
-12. [Diagnostic reference](#12-diagnostic-reference)
+10. [Mapping context](#10-mapping-context)
+11. [Settings](#11-settings)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Diagnostic reference](#13-diagnostic-reference)
 
 ## 1. Getting started
 
@@ -70,10 +72,28 @@ Other YAML files, and other YAML extensions you have installed, are not affected
 
 ### Grammar versions
 
-The extension implements grammar **v0.9.0**, the version executed by the
-[openFHIR engine](https://github.com/medblocks/openFHIR). A file that declares another version, such
-as `FHIRConnect/v1.0.0`, is recognised: it gets an information message on the `grammar` line, is
-indexed for navigation, and is otherwise left alone. Support for v1.0.0 is planned for phase 4.
+The extension implements two grammar versions side by side. Each file is validated, completed and
+documented with the version it declares on its `grammar` line, so a workspace can mix both.
+
+| Version | Used by |
+| --- | --- |
+| **v0.9.0** | The [openFHIR engine](https://github.com/medblocks/openFHIR), which runs this version, and the `0.9.0` tag of the mapping library. |
+| **v1.0.0** | The [specification](https://sevkohler.github.io/FHIRconnect-spec/) and the `main` branch of the mapping library. No engine runs it yet. |
+
+What changes in v1.0.0:
+
+| Change | Keys |
+| --- | --- |
+| Removed: conditions on the whole model move to `preprocessor`. | `spec.fhirConfig.multiple`, `spec.fhirConfig.condition` |
+| Direction of a whole mapping (operational mappings set it once). | `spec.unidirectional` |
+| Linked mappings: the referenced resource goes into a separate composition, linked from `links`. | `link.meaning`, `link.type` in a method |
+| Sub-contexts: a method enters another context instead of a model. | `slotContext` in a method; `context.scope`, `context.contexts` |
+| Operational mappings (e.g. Provenance), produced as a side effect of a run. | `context.operational`; a model without `openEhrConfig` |
+| Path operators that go back one element of the parent path. | `^` in FHIR paths, `../` in openEHR paths |
+| `$context`: a value passed on the REST call, in operational mappings. | `manual` values |
+
+A key of the other version is reported as an unknown key. Hover and completion in a file whose version is not supported (for example `v2.0.0`) use v1.0.0; such
+a file gets an information message on the `grammar` line and is not validated.
 
 ### File types
 
@@ -90,7 +110,7 @@ The `type` key decides which keys are valid:
 Problems are reported while you type, as squiggles in the editor and as entries in the *Problems*
 panel (`Ctrl+Shift+M`). Use `F8` and `Shift+F8` to jump to the next and previous problem in the
 file. Every problem has the source `FHIRConnect` and a code (listed in
-[section 12](#12-diagnostic-reference)), so you can filter the *Problems* panel by either.
+[section 13](#13-diagnostic-reference)), so you can filter the *Problems* panel by either.
 
 ### What is checked
 
@@ -218,7 +238,7 @@ Press `Ctrl+Shift+O` to jump to a method by name, or type `@:` to see the symbol
 ## 7. New mapping file
 
 Run *FHIRConnect: New Mapping File* from the command palette (`Ctrl+Shift+P`). Pick the kind of file
-(model, extension or context), enter a name, and an untitled YAML file opens with a template that
+(model, extension or context), the grammar version (v1.0.0 or v0.9.0), enter a name, and an untitled YAML file opens with a template that
 follows the layout of the mapping library. Fill the placeholders with `Tab`, then save the file
 (`Ctrl+S`) with a `.yml` extension inside the workspace.
 
@@ -244,9 +264,12 @@ These values are references to other mapping files:
 | Where | Points at |
 | --- | --- |
 | `slotArchetype` (in a mapping method) | a model file |
+| `slotContext` (in a mapping method, v1.0.0) | a context file |
 | `spec.extends` (in an extension file) | a model file |
 | `context.archetypes` items | model files |
 | `context.extensions` items | extension files |
+| `context.contexts` items (v1.0.0) | context files (sub-contexts) |
+| `context.operational` items (v1.0.0) | model files (operational models) |
 | `context.start` | a model file |
 | `appendTo` (in an extension file) | a method of the model named in `spec.extends` |
 
@@ -349,7 +372,7 @@ openEHR side.
 
 ### 9.2 How a path is read
 
-The extension follows the openFHIR engine (grammar v0.9.0):
+The extension follows the openFHIR engine for grammar v0.9.0, and the specification for v1.0.0:
 
 | Path | Starts from |
 | --- | --- |
@@ -359,15 +382,18 @@ The extension follows the openFHIR engine (grammar v0.9.0):
 | `$composition/context` | The root COMPOSITION of the template. |
 | `$openehrRoot/...`, `items[at0004]` | The openEHR path of the parent method. A relative path is `parent/child`. |
 | `$reference` | Transparent: the children of a `reference` block keep the parent's openEHR context, and their FHIR paths start from the referenced resource. |
+| `^.code`, `^^.use` (v1.0.0) | One element back up the parent's FHIR path for each `^`, then on. In a `reference` block, the resolved resource counts as the Reference element. |
+| `../data[at0001]` (v1.0.0) | One step back up the parent's openEHR path for each `../`, then on. |
 
 More rules the engine applies, and the extension with it:
 
 - **Slot models** (`slotArchetype`): `$resource` and `$fhirRoot` are the FHIR path of the method that
   calls the slot, and `$archetype` its openEHR path. A model used both on its own and as a slot accepts
-  both.
+  both. In v1.0.0 the same holds for the `start` model of a context entered with `slotContext`.
 - **Conditions** (`fhirCondition`, `openehrCondition`) start from the parent method, and
   `targetAttribute` is relative to `targetRoot`.
-- **Manual mappings**: `path` values are relative to the method's own paths.
+- **Manual mappings**: `path` values are relative to the method's own paths; `$fhirRoot` and
+  `$openehrRoot` there are the method's own paths too.
 - **Extensions**: `add` methods start at the model root; `overwrite` methods replace a method of the
   extended model (found by name at any level) and take its parent; `append` methods take the
   `appendTo` method's context.
@@ -457,10 +483,30 @@ for `fhirconnect`.
 ### 9.8 Path warnings
 
 A warning marks the first segment that does not resolve; the rest of the path is not checked. See the
-[diagnostic reference](#12-diagnostic-reference) for the codes. Turn path checks off, while keeping
+[diagnostic reference](#13-diagnostic-reference) for the codes. Turn path checks off, while keeping
 grammar validation, with `fhirconnect.validation.paths`.
 
-## 10. Settings
+## 10. Mapping context
+
+The *FHIRConnect Mapping Context* view, in the Explorer side bar, shows where the cursor is in the
+project. It follows the cursor in mapping files and keeps the last tree while you look at other files.
+Open it with *FHIRConnect: Show Mapping Context* (`Ctrl+Alt+M`, on macOS `Cmd+Option+M`), from the
+editor context menu, or from the Explorer. Click an entry to open the file at that place; the refresh
+button in the view title updates it by hand.
+
+In a model or extension file, the view has two parts:
+
+| Part | Shows |
+| --- | --- |
+| The method at the cursor (`parent › child`) | Its FHIR path and type, its openEHR path with node label and RM type (click to open the template there), the slot or sub-context it uses, and the extension methods that change it (*Changed by*: `overwrite` by name, `append` by `appendTo`). For a method of an extension file, the model method it overwrites or appends to. |
+| The file | For a model: its StructureDefinition, its archetype with the templates that contain it, its extensions, the methods that use it as a slot and the contexts that load it. For an extension: the model it extends and the contexts that load it. Each context expands to what it loads. |
+
+In a context file the view lists what the context loads: template, profile, `start`, archetypes,
+extensions, sub-contexts (`contexts`), operational models and, for a sub-context, the contexts and
+`slotContext` methods it is entered from. Names that resolve to no file are marked with a warning
+icon.
+
+## 11. Settings
 
 Open the settings with `Ctrl+,` and search for `fhirconnect`.
 
@@ -471,12 +517,14 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to at the end of the line. |
 | `fhirconnect.trace.server` | `off` | Trace the communication with the language server (`messages`, `verbose`) in the *FHIRConnect* output channel. |
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
 | Nothing happens in a mapping file | The language mode in the status bar is *YAML*, and the file has a top-level `grammar: FHIRConnect/...` line. |
-| Only an information message on `grammar` | The file declares a grammar version other than v0.9.0. |
+| Only an information message on `grammar` | The file declares a grammar version other than v0.9.0 and v1.0.0. |
+| A key is unknown although the specification has it | The file declares v0.9.0; keys such as `link` or `slotContext` exist only in v1.0.0, and `fhirConfig.multiple` only in v0.9.0. |
+| The *Mapping Context* view is empty | The view shows the file of the active editor once the workspace is indexed; click in a mapping file or use the refresh button. |
 | F12 or name completion finds nothing | The target file is inside the open workspace folder and has a `metadata.name`. |
 | Many "no mapping named" warnings | The workspace is a subfolder of the project; open the project root. |
 | Another YAML extension reports schema errors on mapping files | That extension validates all YAML; turn off its schema for these files. |
@@ -488,7 +536,7 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | A new version does not show up | Reload the window (`Ctrl+Shift+P` → *Developer: Reload Window*). |
 | Something looks wrong | Set `fhirconnect.trace.server` to `verbose` and look at *View* → *Output* → *FHIRConnect*. |
 
-## 12. Diagnostic reference
+## 13. Diagnostic reference
 
 | Code | Severity | Meaning |
 | --- | --- | --- |
@@ -504,7 +552,8 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | `empty-item` | Warning | Empty list item. |
 | `missing-extension` | Warning | Top-level method of an extension file without `extension`. |
 | `missing-append-to` | Warning | `extension: append` without `appendTo`. |
-| `conflicting-keys` | Warning | `targetAttribute` with `targetAttributes`, or `criteria` with `criterias`. |
+| `conflicting-keys` | Warning | `targetAttribute` with `targetAttributes`, `criteria` with `criterias`, or `slotArchetype` with `slotContext`. |
+| `slot-context-reference` | Warning | v1.0.0: `slotContext` on a method with `openehr: $reference`, which would create a separate composition. |
 | `unresolved-reference` | Warning | No mapping file of the expected type has this name. |
 | `unresolved-method` | Warning | The extended model has no method with this `appendTo` name. |
 | `archetype-not-in-templates` | Information | No workspace template contains the model's archetype; openEHR paths are not checked. |

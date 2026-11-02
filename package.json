@@ -2,7 +2,7 @@
   "name": "vscode-fhir-connect",
   "displayName": "FHIRConnect",
   "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, and path resolution against openEHR templates and FHIR R4.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "damoca",
   "license": "Apache-2.0",
   "private": true,
@@ -44,6 +44,18 @@
         "command": "fhirconnect.peekArchetype",
         "title": "Peek Archetype Definition",
         "category": "FHIRConnect"
+      },
+      {
+        "command": "fhirconnect.showMappingContext",
+        "title": "Show Mapping Context",
+        "category": "FHIRConnect",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "fhirconnect.refreshMappingContext",
+        "title": "Refresh",
+        "category": "FHIRConnect",
+        "icon": "$(refresh)"
       }
     ],
     "configuration": {
@@ -88,6 +100,12 @@
         "key": "ctrl+shift+alt+f12",
         "mac": "cmd+shift+alt+f12",
         "when": "editorTextFocus && fhirconnect.isMapping"
+      },
+      {
+        "command": "fhirconnect.showMappingContext",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorTextFocus && fhirconnect.isMapping"
       }
     ],
     "menus": {
@@ -96,6 +114,11 @@
           "command": "fhirconnect.goToArchetype",
           "when": "fhirconnect.isMapping",
           "group": "navigation@1.5"
+        },
+        {
+          "command": "fhirconnect.showMappingContext",
+          "when": "fhirconnect.isMapping",
+          "group": "navigation@1.6"
         }
       ],
       "commandPalette": [
@@ -106,9 +129,40 @@
         {
           "command": "fhirconnect.peekArchetype",
           "when": "fhirconnect.isMapping"
+        },
+        {
+          "command": "fhirconnect.showMappingContext",
+          "when": "fhirconnect.isMapping"
+        },
+        {
+          "command": "fhirconnect.refreshMappingContext",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "fhirconnect.refreshMappingContext",
+          "when": "view == fhirconnect.mappingContext",
+          "group": "navigation"
         }
       ]
-    }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "fhirconnect.mappingContext",
+          "name": "FHIRConnect Mapping Context",
+          "icon": "$(list-tree)",
+          "contextualTitle": "FHIRConnect"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "fhirconnect.mappingContext",
+        "contents": "Open a FHIRConnect mapping file and place the cursor in a method to see what it resolves to, which extensions change it and which contexts and slots use the file."
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.mjs",

@@ -1,11 +1,13 @@
 import type { BlockSpec, FileType, Grammar, KeySpec, ValueSpec } from './types';
 import { grammarV090 } from './v0_9_0';
+import { grammarV100 } from './v1_0_0';
 
 export * from './types';
 
-const GRAMMARS: readonly Grammar[] = [grammarV090];
+const GRAMMARS: readonly Grammar[] = [grammarV090, grammarV100];
 
-export const DEFAULT_GRAMMAR = grammarV090;
+/** grammar used for completion and hover in files whose version is not supported */
+export const DEFAULT_GRAMMAR = grammarV100;
 
 export const SUPPORTED_VERSIONS = GRAMMARS.map((g) => g.version);
 

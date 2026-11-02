@@ -77,7 +77,7 @@ const conditionKeys: Record<string, KeySpec> = {
 const conditionSnippet = (key: string) =>
   `${key}:\n  targetRoot: $1\n  targetAttribute: $2\n  operator: \${3|${OPERATORS.join(',')}|}\n  criteria: $0`;
 
-const blocks: Record<string, BlockSpec> = {
+export const blocks: Record<string, BlockSpec> = {
   root: {
     label: 'file header',
     keys: {
@@ -365,12 +365,12 @@ const blocks: Record<string, BlockSpec> = {
     keys: {
       fhir: {
         value: { kind: 'scalar', values: FHIR_VARIABLES },
-        doc: 'FHIR path (FHIRPath). `$resource` is the root resource, `$fhirRoot` the path of the parent method; inside `followedBy` paths are relative to the parent. `^` goes up one element.',
+        doc: 'FHIR path (FHIRPath). `$resource` is the root resource, `$fhirRoot` the path of the parent method; inside `followedBy` paths are relative to the parent.',
         specPage: 'basics/Variables.html',
       },
       openehr: {
         value: { kind: 'scalar', values: OPENEHR_VARIABLES },
-        doc: 'openEHR path. `$archetype` is the root archetype, `$composition` the composition, `$openehrRoot` the path of the parent method, `$reference` marks that there is no direct path. `../` goes up one element.',
+        doc: 'openEHR path. `$archetype` is the root archetype, `$composition` the composition, `$openehrRoot` the path of the parent method, `$reference` marks that there is no direct path.',
         specPage: 'basics/Variables.html',
       },
       type: {
@@ -539,4 +539,6 @@ export const grammarV090: Grammar = {
   version: '0.9.0',
   root: 'root',
   blocks,
+  engine: 'openFHIR',
+  pathOperators: false,
 };

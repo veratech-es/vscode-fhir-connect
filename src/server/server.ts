@@ -23,6 +23,7 @@ import { findWorkspaceFiles, isModelFile } from './scan';
 import { rangeOf, REF_TARGET, WorkspaceIndex, type FileEntry, type Location } from './workspace';
 import { ModelIndex } from './models';
 import { PathResolver } from './paths/resolver';
+import { mappingContext, type ContextNode } from './mappingContext';
 import { archetypeDefinitions, archetypeFileAt, modelReferenceAt, pathCompletions, pathDefinitions, pathHover, pathInlayHints, siteAt, type Target } from './paths/features';
 import { lineInfo } from './cursor';
 
@@ -284,6 +285,24 @@ connection.onRequest('fhirconnect/archetypeDefinition', (params: TextDocumentPos
   const site = siteAt(resolver.resolve(found.entry), found.offset);
   const targets = site?.side === 'openehr' ? archetypeDefinitions(site, found.offset, models) : archetypeFileAt(found.doc, models, found.offset);
   return targets.map(modelLocation);
+});
+
+/** Show Mapping Context: the tree of the method and file at the cursor, with positions to jump to. */
+connection.onRequest('fhirconnect/mappingContext', (params: TextDocumentPositionParams) => {
+  const found = at(params);
+  if (!found || !indexReady || !found.doc.supportedGrammar) return [];
+  const nodes = mappingContext({ index, models, resolver }, found.entry, found.offset);
+  const withPositions = (node: ContextNode): unknown => {
+    const { target, children, ...rest } = node;
+    let location: { uri: string; line: number; character: number } | undefined;
+    if (target) {
+      const entry = target.model ? undefined : index.get(target.uri);
+      const position = entry ? rangeOf(entry, { start: target.offset, end: target.offset }).start : models.positionAt(target.uri, target.offset);
+      location = { uri: target.uri, ...position };
+    }
+    return { ...rest, location, children: children?.map(withPositions) };
+  };
+  return nodes.map(withPositions);
 });
 
 function modelLocation(target: Target): LspLocation {

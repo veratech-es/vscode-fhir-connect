@@ -1,8 +1,9 @@
 # FHIRConnect for VS Code: cheat sheet
 
-Version 0.3.0 (phases 1 to 3). The [user guide](user-guide.md) explains each feature in detail.
+Version 0.4.0 (phases 1 to 4). The [user guide](user-guide.md) explains each feature in detail.
 
-The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` line.
+The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` or
+`grammar: FHIRConnect/v1.0.0` line; each file is checked with the version it declares.
 Path features (phase 3) also need the operational templates (`.opt`) somewhere in the workspace;
 FHIR R4 is bundled.
 
@@ -28,6 +29,7 @@ FHIR R4 is bundled.
 | Focus breadcrumbs | `Ctrl+Shift+.` | `Cmd+Shift+.` | outline |
 | Problems panel | `Ctrl+Shift+M` | `Cmd+Shift+M` | validation |
 | Next / previous problem | `F8` / `Shift+F8` | `F8` / `Shift+F8` | validation |
+| Show Mapping Context | `Ctrl+Alt+M` | `Cmd+Option+M` | mapping files |
 | Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` | *FHIRConnect: New Mapping File* |
 | Save all (after a rename) | `Ctrl+K S` | `Cmd+Option+S` | rename |
 
@@ -55,15 +57,21 @@ FHIR R4 is bundled.
 | Jump into the template | `F12` on an openEHR path segment or `context.template.id` | 3 |
 | Jump into the archetype | `Ctrl+Alt+F12` on an openEHR path segment (needs the `.adl` in the workspace) | 3 |
 | Path warnings | Automatic warning on the first segment that does not resolve | 3 |
+| Grammar v1.0.0 | Automatic, from the `grammar` line; v0.9.0 files keep working | 4 |
+| Path operators | `^.code` (FHIR) and `../items[at0001]` (openEHR) go back one element of the parent path (v1.0.0) | 4 |
+| Mapping context | *FHIRConnect Mapping Context* view in the Explorer, `Ctrl+Alt+M` | 4 |
 
 ## Reference sites
 
 | Key | Points at |
 | --- | --- |
 | `slotArchetype` | model |
+| `slotContext` (v1.0.0) | context |
 | `spec.extends` | model |
 | `context.archetypes` items | model |
 | `context.extensions` items | extension |
+| `context.contexts` items (v1.0.0) | context |
+| `context.operational` items (v1.0.0) | model |
 | `context.start` | model |
 | `appendTo` | method of the `spec.extends` model (`parent.child` when nested) |
 
@@ -77,6 +85,7 @@ several files match, the one in the nearest folder wins.
 | `type` | `model`, `extension`, `context` |
 | `spec.system` / `spec.version` | `FHIR` / `R4` |
 | `extension` | `add`, `append`, `overwrite` |
+| `context.scope` (v1.0.0) | `root`, `sub` |
 | `unidirectional` | `openEHR->fhir`, `fhir->openehr` |
 | `operator` | `one of`, `not of`, `empty`, `not empty`, `type` |
 | FHIR variables | `$resource`, `$fhirRoot`, `$reference` |
@@ -94,6 +103,8 @@ Quote values YAML would read as numbers or booleans: `criteria: "524"`.
 | `$composition/x` | template's root COMPOSITION |
 | `$openehrRoot/x`, `x` | parent method's openEHR path (`parent/x`) |
 | `$reference` | parent's openEHR context; FHIR side continues in the referenced resource |
+| `^.x`, `^^.x` (v1.0.0) | one element back up the parent's FHIR path per `^` |
+| `../x` (v1.0.0) | one step back up the parent's openEHR path per `../` |
 | `…\|code` | the part after `\|` is not checked |
 
 In a slot model, `$resource` / `$archetype` are the calling method's paths. ELEMENT→`value` and
@@ -107,3 +118,9 @@ DV_CODED_TEXT→`defining_code` may be left out, as in the engine.
 | `fhirconnect.validation.paths` | `true` |
 | `fhirconnect.inlayHints.enable` | `true` |
 | `fhirconnect.trace.server` | `off` |
+
+## v0.9.0 or v1.0.0
+
+| Only in v0.9.0 | Only in v1.0.0 |
+| --- | --- |
+| `fhirConfig.multiple`, `fhirConfig.condition` | `spec.unidirectional`, `link`, `slotContext`, `context.scope`, `context.contexts`, `context.operational`, `^`, `../`, `$context` |

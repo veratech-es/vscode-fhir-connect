@@ -112,3 +112,32 @@ context:
     expect(complete(doc, position, undefined, names).map((i) => i.label)).toEqual(['KDS_procedure.v1']);
   });
 });
+
+describe('references of grammar v1.0.0', () => {
+  const file = (name: string, type: string, body: string) => `grammar: FHIRConnect/v1.0.0
+type: ${type}
+metadata:
+  name: ${name}
+  version: 1.0.0
+spec:
+  system: FHIR
+  version: R4
+${body}`;
+
+  it('resolves slotContext, contexts and operational', () => {
+    const v1 = new WorkspaceIndex();
+    v1.set('file:///ips/IPS.context.yml', file('IPS.context', 'context', 'context:\n  contexts:\n    - IPS_problem.context\n  operational:\n    - provenance\n  start: SECTION.adhoc.v1\n'));
+    v1.set('file:///ips/problem/IPS_problem.context.yml', file('IPS_problem.context', 'context', 'context:\n  scope: sub\n  start: SECTION.adhoc.v1\n'));
+    v1.set('file:///ips/provenance.yml', file('provenance', 'model', '  fhirConfig:\n    structureDefinition: http://hl7.org/fhir/StructureDefinition/Provenance\n'));
+    v1.set('file:///ips/section.yml', file('SECTION.adhoc.v1', 'model', 'mappings:\n  - name: problems\n    slotContext: IPS_problem.context\n'));
+    const root = v1.get('file:///ips/IPS.context.yml')!;
+    expect(root.references.map((r) => [r.kind, v1.targets(root, r).map((t) => t.entry.name)])).toEqual([
+      ['contexts', ['IPS_problem.context']],
+      ['operational', ['provenance']],
+      ['start', ['SECTION.adhoc.v1']],
+    ]);
+    const section = v1.get('file:///ips/section.yml')!;
+    expect(section.references.map((r) => [r.kind, v1.targets(section, r).map((t) => t.entry.name)])).toEqual([['slotContext', ['IPS_problem.context']]]);
+    expect(v1.usages(v1.get('file:///ips/problem/IPS_problem.context.yml')!).map((u) => u.ref.kind).sort()).toEqual(['contexts', 'slotContext']);
+  });
+});

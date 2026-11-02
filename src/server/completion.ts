@@ -22,9 +22,9 @@ export type NameProvider = (kind: RefKind) => NameCandidate[];
 
 /** Which keys hold references, by the block they sit in. */
 const REFERENCE_KEYS: Record<string, Partial<Record<string, RefKind>>> = {
-  method: { slotArchetype: 'slotArchetype', appendTo: 'appendTo' },
+  method: { slotArchetype: 'slotArchetype', slotContext: 'slotContext', appendTo: 'appendTo' },
   spec: { extends: 'extends' },
-  context: { start: 'start', archetypes: 'archetypes', extensions: 'extensions' },
+  context: { start: 'start', archetypes: 'archetypes', extensions: 'extensions', contexts: 'contexts', operational: 'operational' },
 };
 
 /** The reference kind of `key` in the map at `path`, if it holds one. */

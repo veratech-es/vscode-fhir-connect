@@ -1,0 +1,44 @@
+grammar: FHIRConnect/v1.0.0
+type: model
+metadata:
+  name:  CLUSTER.timing_nondaily.v1
+  version: 0.0.1-alpha
+spec:
+  system: FHIR
+  version: R4
+  openEhrConfig:
+    archetype: openEHR-EHR-CLUSTER.timing_nondaily.v1
+    revision: 2.0.2
+  fhirConfig:
+    structureDefinition: http://hl7.org/fhir/StructureDefinition/Dosage
+
+mappings:
+
+  - name: dosageTiming
+    with:
+      fhir: $fhirRoot.timing.repeat
+      openehr: $archetype
+    mappingCode: timingNonDaily
+    followedBy:
+      mappings:
+        - name: when
+          with:
+            fhir: when
+            openehr: items[at0006]/items[at0005]
+
+        - name: offset
+          with:
+            fhir: offset
+            openehr: items[at0006]/items[at0009]
+
+# unmapped openEHR  (archetype 2.0.2, CKM latest 1.1.2)
+# items[at0001]                Specific date
+# items[at0002]                Repetition interval
+# items[at0003]                Specific day of week
+# items[at0004]                Specific day of month
+# items[at0010]/items[at0011]  On
+# items[at0010]/items[at0012]  Off
+# items[at0010]/items[at0013]  Repetitions
+# items[at0014]                Days per time period
+# items[at0021]                Timing description
+# items[at0022]                Activities per time period
