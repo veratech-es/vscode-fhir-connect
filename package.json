@@ -8,8 +8,12 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/damoca/vscode-fhir-connect.git"
+    "url": "https://github.com/veratech-es/vscode-fhir-connect.git"
   },
+  "bugs": {
+    "url": "https://github.com/veratech-es/vscode-fhir-connect/issues"
+  },
+  "homepage": "https://github.com/veratech-es/vscode-fhir-connect#readme",
   "engines": {
     "vscode": "^1.90.0"
   },
