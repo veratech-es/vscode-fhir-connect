@@ -3,8 +3,8 @@
 The extension is ready to be published on the
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/vscode) (used by VS Code) and on
 [Open VSX](https://open-vsx.org) (used by VSCodium, Gitpod, Eclipse Theia, Cursor and other
-VS Code forks). It has not been published yet. This page lists the one-time setup and the steps for
-each release.
+VS Code forks). It is on the Visual Studio Marketplace since version 0.5.1, not yet on Open VSX. This
+page lists the one-time setup and the steps for each release.
 
 The extension ID is `veratech-es.vscode-fhir-connect`: the `publisher` field of `package.json`
 (`veratech-es`) must match the publisher on the Marketplace and the namespace on Open VSX.
@@ -98,7 +98,12 @@ page.
    ```
 
    No warnings, and the file list as above. Install the `.vsix` locally and try it.
-4. Commit, merge to `main` and tag the release (`git tag v0.6.0 && git push origin v0.6.0`).
+4. Commit, merge to `main` and tag the release (`git tag v0.6.0 && git push origin v0.6.0`). The
+   *Release* workflow (`.github/workflows/release.yml`) then builds the `.vsix` again, checks that
+   the tag matches the version of `package.json`, and creates the GitHub release with the `.vsix`
+   attached and the section of that version in `CHANGELOG.md` as notes. Instead of pushing the tag,
+   you can run the workflow by hand (*Actions* → *Release* → *Run workflow*) with the tag and,
+   optionally, the commit to build; it creates the tag on that commit.
 5. Publish the same `.vsix` to both registries:
 
    ```shell

@@ -1,17 +1,19 @@
 # Changelog
 
-## 0.5.1 (unreleased)
+## 0.5.1 (2026-11-02)
 
-- Ready for the Visual Studio Marketplace and Open VSX (not published yet): extension icon
-  (`images/icon.png`), Marketplace banner colour, more keywords, and
+- First version on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=veratech-es.vscode-fhir-connect):
+  extension icon (`images/icon.png`), Marketplace banner colour, more keywords, and
   [docs/publishing.md](docs/publishing.md) with the publisher setup and the release steps.
 - Documentation review: the README lists the openFHIR settings and commands, the cheat sheet the
   *Peek Archetype Definition*, *Check openFHIR Connection* and *Set openFHIR Token* commands and the
-  Explorer context menu. The user guide and the cheat sheet no longer mention the development
-  phases nor an old `.vsix` version; the version history is in this change log.
+  Explorer context menu. The user guide and the cheat sheet describe the current features only; the
+  version history is in this change log.
 - The repository moved to [veratech-es/vscode-fhir-connect](https://github.com/veratech-es/vscode-fhir-connect);
   `package.json` now points `repository`, `bugs` and `homepage` there.
 - The publisher is `veratech-es`, so the extension ID is `veratech-es.vscode-fhir-connect`.
+- The `.vsix` of each version is attached to its
+  [GitHub release](https://github.com/veratech-es/vscode-fhir-connect/releases).
 
 ## 0.5.0 (unreleased)
 
