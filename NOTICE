@@ -12,9 +12,12 @@ templates of the same library (main branch), under the same license.
 test/fixtures/mapping-lib-1.0.0 contains the mapping files and operational templates of the
 main branch of the same library (commit 6d5e66c), licensed under the Apache License, Version 2.0.
 
-test/fixtures/ckm-archetypes contains four archetypes of the openEHR Clinical Knowledge
-Manager (https://github.com/openEHR/CKM-mirror), licensed under the Creative Commons
-Attribution-ShareAlike 3.0 Unported license (see the LICENSE file in that folder). They
+test/fixtures/ckm-archetypes contains archetypes of the openEHR Clinical Knowledge Manager
+(https://github.com/openEHR/CKM-mirror), licensed under the Creative Commons
+Attribution-ShareAlike 3.0 Unported or 4.0 International license, as each file states (see
+the LICENSE file in that folder). test/fixtures/catsalut-archetypes contains an archetype of
+the CatSalut Clinical Knowledge Manager (Departament de Salut de la Generalitat de Catalunya),
+licensed under the Creative Commons Attribution-ShareAlike 4.0 International license. They
 are test data only and are not part of the packaged extension.
 
 src/server/models/fhir-r4.json is generated from the FHIR R4 (4.0.1) definitions

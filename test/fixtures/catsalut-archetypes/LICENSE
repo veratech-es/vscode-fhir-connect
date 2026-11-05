@@ -1,0 +1,6 @@
+openEHR-EHR-CLUSTER.xds_metadata.v0.adl: archetype of the CatSalut CKM (Departament de Salut de la Generalitat de Catalunya),
+as provided by the project owner as a regression case. It reuses the id of the international archetype with
+different node codes (Health care facility type is at0032, not at0007).
+
+This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License.
+To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/.

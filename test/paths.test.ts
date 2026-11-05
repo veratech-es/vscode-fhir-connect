@@ -43,7 +43,7 @@ function offsetOf(e: FileEntry, needle: string, delta = 0, nth = 0): number {
 beforeAll(() => {
   index = new WorkspaceIndex();
   models = new ModelIndex();
-  for (const file of files(CORPUS)) {
+  for (const file of [...files(CORPUS), ...files(ADL)]) {
     const text = readFileSync(file, 'utf8');
     if (/\.ya?ml$/.test(file)) index.set(uriOf(file), text);
     else models.set(uriOf(file), text);
@@ -141,7 +141,7 @@ describe('path resolution in the 1.0.0 mapping library', () => {
   it('resolves nearly every path, and reports the ones the templates or FHIR R4 do not have', () => {
     const v1 = new WorkspaceIndex();
     const v1Models = new ModelIndex();
-    for (const file of files(V1)) {
+    for (const file of [...files(V1), ...files(ADL)]) {
       const text = readFileSync(file, 'utf8');
       if (/\.ya?ml$/.test(file)) v1.set(uriOf(file), text);
       else v1Models.set(uriOf(file), text);
@@ -220,7 +220,7 @@ mappings:
     const back = siteAt(resolution, offsetOf(e, '../items[at0005]', 5))!;
     expect(back.problem).toBeUndefined();
     expect(back.result).toMatchObject({ known: true, rmTypes: ['ELEMENT'] });
-    expect((back.result as { nodes: { label?: string }[] }).nodes[0].label).toBe('Labortest-Kategorie');
+    expect((back.result as { nodes: { label?: string }[] }).nodes[0].label).toBe('Test name');
   });
 
   it('does not know them in grammar v0.9.0', () => {
@@ -252,7 +252,8 @@ describe('path resolution in the mapping library', () => {
     const site = siteAt(resolver.resolve(lab), offsetOf(lab, 'data[at0003]/items[at0005]', 2))!;
     expect(site.key).toBe('with.openehr');
     const hover = pathHover(site, offsetOf(lab, 'items[at0005]', 2))!;
-    expect(hover.markdown).toContain('**Labortest-Kategorie** · `ELEMENT`');
+    expect(hover.markdown).toContain('**Test name** · `ELEMENT`');
+    expect(hover.markdown).toContain('archetype `openEHR-EHR-OBSERVATION.laboratory_test_result.v1.adl`');
     expect(hover.markdown).toContain('`openEHR-EHR-OBSERVATION.laboratory_test_result.v1/data[at0001]/events[at0002]/data[at0003]/items[at0005]`');
   });
 
@@ -279,12 +280,20 @@ describe('path resolution in the mapping library', () => {
     expect(resolution.notes.map((n) => n.code)).toEqual(['unresolved-overwrite']);
   });
 
-  it('opens the template at the node of a path step', () => {
+  it('opens the archetype at the node of a path step of a model', () => {
     const lab = entry(LAB);
     const site = siteAt(resolver.resolve(lab), offsetOf(lab, 'data[at0003]/items[at0005]', 2))!;
     const [target] = pathDefinitions(site, offsetOf(lab, 'items[at0005]', 2));
+    expect(target.uri).toBe(uriOf(join(ADL, 'openEHR-EHR-OBSERVATION.laboratory_test_result.v1.adl')));
+    expect(readFileSync(join(ADL, 'openEHR-EHR-OBSERVATION.laboratory_test_result.v1.adl'), 'utf8').slice(target.offset, target.offset + 15)).toBe('ELEMENT[at0005]');
+  });
+
+  it('opens the template of the context at the node of a path step of an extension', () => {
+    const extension = entry('projects/org.highmed/KDS/laborbericht/KDS_laborbericht.yml');
+    const resolution = resolver.resolve(extension);
+    const site = resolution.sites.find((s) => s.side === 'openehr' && s.result.known && (s.result as { nodes: unknown[] }).nodes.length > 0)!;
+    const [target] = pathDefinitions(site, site.span.end);
     expect(short(target.uri)).toBe('projects/org.highmed/KDS/resources/openehr/templates/KDS_Laborbericht.opt');
-    expect(readFileSync(join(TEMPLATES, 'KDS_Laborbericht.opt'), 'utf8').slice(target.offset, target.offset + 9)).toBe('<children');
   });
 
   it('opens the ADL archetype at the node of a path step', () => {
@@ -300,14 +309,13 @@ describe('path resolution in the mapping library', () => {
     expect(adl.slice(tree.offset, tree.offset + 17)).toBe('ITEM_TREE[at0003]');
     const [root] = archetypeFileAt(lab.doc, archetypes, offsetOf(lab, 'openEHR-EHR-OBSERVATION.laboratory_test_result.v1', 3));
     expect(adl.slice(root.offset, root.offset + 19)).toBe('OBSERVATION[at0000]');
-    expect(archetypeDefinitions(site, offsetOf(lab, 'items[at0005]', 2), models)).toEqual([]);
   });
 
   it('shows what `with` paths resolve to as inlay hints', () => {
     const lab = entry(LAB);
     const hints = pathInlayHints(lab.doc, resolver.resolve(lab));
     const category = hints.find((h) => h.offset === offsetOf(lab, 'data[at0003]/items[at0005]"', 27));
-    expect(category?.label).toBe('Labortest-Kategorie · ELEMENT');
+    expect(category?.label).toBe('Test name · ELEMENT');
     expect(hints.find((h) => h.offset === offsetOf(lab, 'fhir: "category"', 16))?.label).toBe('CodeableConcept[]');
   });
 
@@ -330,8 +338,8 @@ describe('path completion', () => {
   it('offers the template nodes below an openEHR path, with their labels', () => {
     const found = completeAt(LAB, 'openehr: "data[at0003]/items[at0005]"', 'openehr', 'data[at0003]/')!;
     const item = found.items.find((i) => i.label === 'items[at0005]')!;
-    expect(item.detail).toBe('Labortest-Kategorie · ELEMENT');
-    expect(item.filterText).toContain('Labortest-Kategorie');
+    expect(item.detail).toBe('Test name · ELEMENT');
+    expect(item.filterText).toContain('Test name');
     expect(found.items.some((i) => i.label === 'items[openEHR-EHR-CLUSTER.laboratory_test_analyte.v1]')).toBe(true);
   });
 

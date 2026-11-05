@@ -8,6 +8,7 @@ import { PathResolver } from '../src/server/paths/resolver';
 import { WorkspaceIndex, type FileEntry } from '../src/server/workspace';
 
 const CORPUS = join(__dirname, 'fixtures', 'mapping-lib-1.0.0');
+const ADL = join(__dirname, 'fixtures', 'ckm-archetypes');
 const LAB = 'model/observation/org.openehr/laboratory_test_result.v1.yml';
 
 function files(dir: string): string[] {
@@ -31,7 +32,7 @@ function lines(nodes: ContextNode[], depth = 0, max = 2): string[] {
 beforeAll(() => {
   const index = new WorkspaceIndex();
   const models = new ModelIndex();
-  for (const file of files(CORPUS)) {
+  for (const file of [...files(CORPUS), ...files(ADL)]) {
     const text = readFileSync(file, 'utf8');
     if (/\.ya?ml$/.test(file)) index.set(pathToFileURL(file).toString(), text);
     else models.set(pathToFileURL(file).toString(), text);
@@ -46,7 +47,7 @@ describe('mapping context', () => {
     expect(lines([method], 0, 1)).toEqual([
       'eventParent — method',
       '  DiagnosticReport — FHIR · DiagnosticReport',
-      '  openEHR-EHR-OBSERVATION.laboratory_test_result.v1/data[at0001]/events[at0002] — openEHR · Jedes Ereignis · EVENT',
+      '  openEHR-EHR-OBSERVATION.laboratory_test_result.v1/data[at0001]/events[at0002] — openEHR · Any event · EVENT',
       '  Changed by — 2',
     ]);
     expect(lines(method.children![2].children!)).toEqual(['eehrxf_lab_result › resultAppendToParent — append', 'KDS_laborbericht › resultAppendToParent — append']);
@@ -57,7 +58,7 @@ describe('mapping context', () => {
     const file = mappingContext(input, lab, 0).find((n) => n.kind === 'model')!;
     expect(lines(file.children!, 0, 0)).toEqual([
       'http://hl7.org/fhir/StructureDefinition/DiagnosticReport — structureDefinition · DiagnosticReport',
-      'openEHR-EHR-OBSERVATION.laboratory_test_result.v1 — archetype · in 4 templates',
+      'openEHR-EHR-OBSERVATION.laboratory_test_result.v1 — archetype · ADL',
       'Extensions — 2',
       'Contexts — 2',
     ]);

@@ -45,6 +45,9 @@ export interface OptAttribute {
 }
 
 export interface Template {
+  /** where the tree comes from: an operational template, or a single ADL archetype */
+  source: 'opt' | 'adl';
+  /** the template id, or the archetype id of an ADL archetype */
   id: string;
   uri: string;
   concept?: string;
@@ -54,6 +57,8 @@ export interface Template {
   archetypes: Map<string, OptNode[]>;
   /** offset of `<template_id>` in the file */
   idOffset: number;
+  /** for ADL archetypes: the archetypes of the workspace a slot may hold, which paths may step into */
+  slotFillers?: (slot: OptNode) => OptNode[];
 }
 
 /** Reads an operational template; returns undefined for XML that is not one. */
@@ -69,6 +74,7 @@ export function parseOpt(uri: string, text: string): Template | undefined {
   const id = childText(child(xml, 'template_id'), 'value');
   if (!definition || !id) return undefined;
   const template = {
+    source: 'opt',
     id,
     uri,
     concept: childText(xml, 'concept'),

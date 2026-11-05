@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0 (unreleased)
+
+Model mappings are checked against their archetype, not against templates, following the logic of
+FHIRConnect: a model maps an archetype, an extension adjusts it to a template, a context loads both.
+
+- **Fix:** path completion, hover and warnings of a model mapping no longer take at-codes from an
+  operational template that holds another version of the archetype. For example, with the CatSalut
+  `openEHR-EHR-CLUSTER.xds_metadata.v0` in the workspace, *Health care facility type* is offered as
+  `items[at0032]`, as the archetype defines it, and not as `items[at0007]` from the international
+  archetype inside `EHDS - Laboratory report.opt`.
+- ADL 1.4 archetypes (`.adl`) are now read in full: nodes, occurrences, existence and cardinality,
+  slots (`allow_archetype`), internal references (`use_node`), domain types such as
+  `C_DV_QUANTITY`, and the terms of the original language.
+- **Model mappings** resolve their openEHR paths against the `.adl` whose id is
+  `spec.openEhrConfig.archetype`. A path through a slot goes on in the archetype that fills it when its
+  `.adl` is in the workspace, and completion on a slot offers those archetypes. `$composition` in a
+  model of a non-COMPOSITION archetype is checked against the reference model only.
+- **Extension mappings** listed in a context resolve against the archetype as the context's template
+  (`context.template.id`) constrains it, also for the model methods they overwrite or append to. An
+  extension in no context, or whose template is not in the workspace, resolves like its model.
+- The information `archetype-not-in-templates` is now `archetype-not-in-workspace`: no `.adl` with the
+  model's archetype id is in the workspace.
+- `F12` on an openEHR path segment opens the `.adl` at the node in a model, and the template in an
+  extension. Hover names the archetype file or template a node comes from. The Mapping Context view
+  lists the `.adl` of a model's archetype instead of the templates that contain it.
+
 ## 0.5.1 (2026-11-02)
 
 - First version on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=veratech-es.vscode-fhir-connect):

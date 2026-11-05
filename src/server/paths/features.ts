@@ -40,7 +40,8 @@ function nodeSummary(node: OptNode): string {
   if (node.description && node.description !== node.label && !/^@\s*internal\s*@$/.test(node.description)) lines.push(node.description);
   const archetype = node.owner?.archetypeId;
   const where = [code && `\`${code}\``, archetype && node.kind !== 'root' && `in \`${archetype}\``].filter(Boolean).join(' ');
-  lines.push([where, `template \`${node.template.id}\``].filter(Boolean).join(' · '));
+  const source = node.template.source === 'opt' ? `template \`${node.template.id}\`` : `archetype \`${node.template.uri.split('/').pop()}\``;
+  lines.push([where, source].filter(Boolean).join(' · '));
   return lines.join('\n\n');
 }
 
@@ -100,7 +101,7 @@ export function pathInlayHints(doc: FcDocument, resolution: FileResolution): { o
   return hints;
 }
 
-/** The template nodes or profile a path step stands for. */
+/** The archetype or template nodes a path step stands for. */
 export function pathDefinitions(site: PathSite, offset: number): Target[] {
   const step = stepAt(site, offset);
   const state = step ? step.after : site.result;
@@ -330,7 +331,9 @@ function openEhrItems(state: OpenEhrState): CompletionItem[] {
   for (const node of state.nodes) {
     for (const attribute of node.attributes.values()) {
       if (attribute.name === 'name') continue;
-      for (const child of attribute.children) {
+      // the slots of an archetype offer the archetypes of the workspace they accept
+      const children = attribute.children.flatMap((c) => (c.kind === 'slot' ? (c.template.slotFillers?.(c) ?? []) : [c]));
+      for (const child of children) {
         if (child.kind === 'slot' || child.kind === 'primitive') continue;
         const code = child.kind === 'root' ? child.archetypeId : child.nodeId;
         if (!code) continue;

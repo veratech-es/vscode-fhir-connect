@@ -18,7 +18,7 @@ for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
 6. [Outline and breadcrumbs](#6-outline-and-breadcrumbs)
 7. [New mapping file](#7-new-mapping-file)
 8. [Navigation between mapping files](#8-navigation-between-mapping-files)
-9. [Paths against templates and FHIR R4](#9-paths-against-templates-and-fhir-r4)
+9. [Paths against archetypes, templates and FHIR R4](#9-paths-against-archetypes-templates-and-fhir-r4)
 10. [Mapping context](#10-mapping-context)
 11. [Running mappings with openFHIR](#11-running-mappings-with-openfhir)
 12. [Settings](#12-settings)
@@ -341,12 +341,12 @@ Put the cursor on a `metadata.name`, or on a reference, and press `F2`. Type the
 - Edits land in the files but are not saved; *File* → *Save All* (`Ctrl+K S`) saves them, and
   `Ctrl+Z` in each file undoes them.
 
-## 9. Paths against templates and FHIR R4
+## 9. Paths against archetypes, templates and FHIR R4
 
 The extension reads the paths of every mapping method (`with.fhir`, `with.openehr`,
 conditions, `manual` entries) and works out what each one points at: an element of a FHIR R4 type on
-one side, a node of an openEHR operational template on the other. This drives hover, inlay hints,
-path completion, Go to Definition into the template and path warnings.
+one side, a node of an openEHR archetype or operational template on the other. This drives hover,
+inlay hints, path completion, Go to Definition into the archetype or template and path warnings.
 
 ### 9.1 Where the models come from
 
@@ -354,18 +354,35 @@ path completion, Go to Definition into the template and path warnings.
 | --- | --- | --- |
 | FHIR | The FHIR R4 (4.0.1) resources and data types, bundled with the extension | Nothing. `spec.fhirConfig.structureDefinition` picks the root resource. |
 | FHIR profiles | StructureDefinition `.json` files in the workspace | Optional. A profile URL in `structureDefinition` resolves to the type the profile constrains. |
-| openEHR | Operational templates (`.opt`, OPT 1.4 XML) in the workspace | Put the templates of your project somewhere in the workspace folder. |
-| openEHR archetypes | ADL 1.4 archetypes (`.adl`) in the workspace | Optional. Only for *Go to Archetype Definition* ([9.7](#97-go-to-the-archetype-adl)). |
+| openEHR archetypes | ADL 1.4 archetypes (`.adl`) in the workspace | Put the archetypes your model mappings map somewhere in the workspace folder. |
+| openEHR templates | Operational templates (`.opt`, OPT 1.4 XML) in the workspace | Put the templates your context mappings name somewhere in the workspace folder. |
 
 The extension scans the whole workspace for `.opt` and `.adl` files and for `.json` files that contain a
 StructureDefinition, and follows changes to them. Web templates (`.json` from the openEHR web template
 format) are not read; export the OPT instead.
 
-A model mapping is checked against every template that contains its archetype
-(`spec.openEhrConfig.archetype`), so the same model works for all the templates that use it. When no
-template in the workspace contains the archetype, its openEHR paths stay unchecked and an information
-message on `archetype` says so. When the workspace has no templates at all, nothing is reported on the
-openEHR side.
+Which openEHR model a path is checked against depends on the kind of mapping, following the logic of
+FHIRConnect (a model maps an archetype to an unconstrained profile; an extension adjusts it to a
+template and a constrained profile; a context loads both for one template):
+
+| Mapping | openEHR paths are checked against |
+| --- | --- |
+| Model | The ADL archetype named in `spec.openEhrConfig.archetype`, found by its id. Templates are never used, even when they contain the same archetype. |
+| Extension listed in a context | The archetype as constrained by the template of that context (`context.template.id`), for the extension's own methods and for the model methods they land in. |
+| Extension in no context, or whose context template is not in the workspace | The ADL archetype of the extended model, like the model itself. |
+
+So the at-codes offered and checked in a model are always those of your `.adl` file. A template that
+was built from another revision of the archetype, or from a local archetype that reuses the id of a
+CKM one, cannot change them.
+
+When no `.adl` with the model's archetype id is in the workspace, its openEHR paths stay unchecked and
+an information message on `archetype` says so. When the workspace has no archetypes or templates at
+all, nothing is reported on the openEHR side.
+
+In a model, a path that crosses a slot (`items[openEHR-EHR-CLUSTER.address.v1]/…`) goes on in that
+archetype when its `.adl` is in the workspace and the slot accepts it; completion on a slot offers the
+archetypes of the workspace it accepts. `$composition` in a model that does not map a COMPOSITION is
+checked against the reference model only (`$composition/context/start_time`).
 
 ### 9.2 How a path is read
 
@@ -376,7 +393,7 @@ The extension follows the openFHIR engine for grammar v0.9.0, and the specificat
 | `$resource.code` | The root resource of the model (`structureDefinition`). |
 | `$fhirRoot.code`, `code` | The FHIR path of the parent method. A relative path is `parent.child`. |
 | `$archetype/data[at0001]` | The archetype root. |
-| `$composition/context` | The root COMPOSITION of the template. |
+| `$composition/context` | The root COMPOSITION of the template (in a model: of the archetype when it is a COMPOSITION, otherwise any COMPOSITION of the reference model). |
 | `$openehrRoot/...`, `items[at0004]` | The openEHR path of the parent method. A relative path is `parent/child`. |
 | `$reference` | Transparent: the children of a `reference` block keep the parent's openEHR context, and their FHIR paths start from the referenced resource. |
 | `^.code`, `^^.use` (v1.0.0) | One element back up the parent's FHIR path for each `^`, then on. In a `reference` block, the resolved resource counts as the Reference element. |
@@ -402,7 +419,7 @@ More rules the engine applies, and the extension with it:
   follows a Reference, `where(...)`, `first()` and `extension(url)` keep the type. Casts accept the
   FHIRPath names (`dateTime`) and the HAPI class names the engine accepts (`DateTimeType`).
 - A **`|suffix`** on an openEHR path (`|code`, `|magnitude`) ends the check: the part after `|` is a
-  web template attribute, not a template node.
+  web template attribute, not a node.
 
 Anything the extension cannot follow (an unfilled slot, an unknown function, a profile that is not in
 the workspace) is left alone: no warning, no hover, no hint.
@@ -411,8 +428,10 @@ the workspace) is left alone: no warning, no hover, no hint.
 
 Hover over any segment of a path to see what it resolves to.
 
-- openEHR: `**label** · RM type · min..max`, the node description, the archetype code and template,
-  and the full resolved path. When several templates contain the archetype, the first three nodes are listed.
+- openEHR: `**label** · RM type · min..max`, the node description, the archetype code, the archetype
+  file or template it comes from, and the full resolved path. Labels and descriptions come from the
+  original language of the archetype, or from the template (with the names it gives to nodes) for an
+  extension in a context. When several nodes match, the first three are listed.
 - An RM attribute (`value`, `defining_code`, …): its type and the RM class that declares it.
 - FHIR: the element, its type(s), cardinality and short description, and the resolved path
   (`Observation.code.coding`).
@@ -423,7 +442,7 @@ which template or StructureDefinition the value names.
 ### 9.4 Inlay hints
 
 At the end of every `with.fhir` and `with.openehr` line, a grey hint shows what the path resolved to:
-the node label and RM type on the openEHR side (`Labortest-Kategorie · ELEMENT`), the type on the FHIR
+the node label and RM type on the openEHR side (`Test name · ELEMENT`), the type on the FHIR
 side, with `[]` when the element repeats (`CodeableConcept[]`). Turn them off with
 `fhirconnect.inlayHints.enable`, or for all languages with `editor.inlayHints.enabled`
 (`Ctrl+Alt` held shows them while they are set to *offUnlessPressed*).
@@ -443,15 +462,17 @@ side, with `[]` when the element repeats (`CodeableConcept[]`). Turn them off wi
 
 ### 9.6 Go to Definition into the model
 
-`F12` (or `Ctrl+click`) on a segment of an openEHR path opens the template at that node. On
+`F12` (or `Ctrl+click`) on a segment of an openEHR path opens the model the path was checked against
+at that node: the `.adl` archetype in a model, the template in an extension of a context. On
 `context.template.id` it opens the template, and on a `structureDefinition` or `context.profile.url`
 that names a workspace profile it opens the StructureDefinition file. FHIR core types have no file to
 open.
 
 ### 9.7 Go to the archetype (ADL)
 
-`F12` goes to the node in the template (OPT). When the source archetypes (`.adl`, ADL 1.4) are also in
-the workspace, a second shortcut goes to the same node in the archetype instead:
+In an extension, `F12` goes to the node in the template (OPT). When the source archetypes (`.adl`,
+ADL 1.4) are also in the workspace, a second shortcut goes to the same node in the archetype instead
+(in a model, it lands where `F12` does):
 
 | Action | Windows / Linux | macOS |
 | --- | --- | --- |
@@ -471,8 +492,8 @@ files.
 - The archetype is found by its id (the `archetype_id` in the ADL header), wherever the file is in the
   workspace. When no `.adl` with that id exists, a message says so.
 
-The at-codes are taken from the template, so an archetype revision that renumbered its nodes can
-land on a different node, or on the root when the code is missing.
+In an extension the at-codes are taken from the template, so an archetype revision that renumbered
+its nodes can land on a different node, or on the root when the code is missing.
 
 To change the shortcuts, open *File* → *Preferences* → *Keyboard Shortcuts* (`Ctrl+K Ctrl+S`) and search
 for `fhirconnect`.
@@ -496,7 +517,7 @@ In a model or extension file, the view has two parts:
 | Part | Shows |
 | --- | --- |
 | The method at the cursor (`parent › child`) | Its FHIR path and type, its openEHR path with node label and RM type (click to open the template there), the slot or sub-context it uses, and the extension methods that change it (*Changed by*: `overwrite` by name, `append` by `appendTo`). For a method of an extension file, the model method it overwrites or appends to. |
-| The file | For a model: its StructureDefinition, its archetype with the templates that contain it, its extensions, the methods that use it as a slot and the contexts that load it. For an extension: the model it extends and the contexts that load it. Each context expands to what it loads. |
+| The file | For a model: its StructureDefinition, its archetype with the `.adl` file it is read from, its extensions, the methods that use it as a slot and the contexts that load it. For an extension: the model it extends and the contexts that load it. Each context expands to what it loads. |
 
 In a context file the view lists what the context loads: template, profile, `start`, archetypes,
 extensions, sub-contexts (`contexts`), operational models and, for a sub-context, the contexts and
@@ -578,7 +599,7 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | Setting | Default | Description |
 | --- | --- | --- |
 | `fhirconnect.validation.enable` | `true` | Report grammar problems and unresolved names in mapping files. |
-| `fhirconnect.validation.paths` | `true` | Check FHIR and openEHR paths against FHIR R4 and the workspace templates. |
+| `fhirconnect.validation.paths` | `true` | Check FHIR and openEHR paths against FHIR R4 and the workspace archetypes and templates. |
 | `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to at the end of the line. |
 | `fhirconnect.openfhir.url` | `http://localhost:8080` | Base URL of the openFHIR engine. |
 | `fhirconnect.openfhir.syncOnSave` | `true` | Make openFHIR reload its bootstrap folder when a mapping file or `.opt` in it is saved. |
@@ -597,9 +618,11 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | F12 or name completion finds nothing | The target file is inside the open workspace folder and has a `metadata.name`. |
 | Many "no mapping named" warnings | The workspace is a subfolder of the project; open the project root. |
 | Another YAML extension reports schema errors on mapping files | That extension validates all YAML; turn off its schema for these files. |
-| No hover or hint on openEHR paths | A `.opt` containing the model's archetype is in the workspace (look for the `archetype-not-in-templates` information). Web templates are not read. |
+| No hover or hint on openEHR paths of a model | The `.adl` of the model's archetype is in the workspace (look for the `archetype-not-in-workspace` information); a template that contains the archetype is not enough. |
+| No hover or hint on openEHR paths of an extension | Its context names a template (`context.template.id`) whose `.opt` is in the workspace, or the extended model's `.adl` is. Web templates are not read. |
+| Completion offers at-codes your archetype does not have | Look at the hover: it names the `.adl` file or template the node comes from. Another `.adl` with the same archetype id may be in the workspace; the first one by path is used. |
 | No hover on a FHIR path after a profile URL | The StructureDefinition `.json` is in the workspace and its `url` matches. |
-| A path warning you believe is wrong | Check the segment in the template (`F12` on the previous segment) and the engine rules in [9.2](#92-how-a-path-is-read). |
+| A path warning you believe is wrong | Check the segment in the archetype or template (`F12` on the previous segment) and the engine rules in [9.2](#92-how-a-path-is-read). |
 | `Ctrl+Alt+F12` says no ADL archetype was found | The `.adl` file (ADL 1.4; ADL 2 `.adls` is not read) is in the workspace and its header names the same archetype id. |
 | *Cannot reach openFHIR* | The engine is running (`docker compose ps`) and `fhirconnect.openfhir.url` matches its port. The first start takes about a minute. |
 | *Is it openFHIR 3.0.3 or later?* | The URL points to another service or an older engine; pull the latest image (`docker compose pull`). |
@@ -631,8 +654,8 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | `slot-context-reference` | Warning | v1.0.0: `slotContext` on a method with `openehr: $reference`, which would create a separate composition. |
 | `unresolved-reference` | Warning | No mapping file of the expected type has this name. |
 | `unresolved-method` | Warning | The extended model has no method with this `appendTo` name. |
-| `archetype-not-in-templates` | Information | No workspace template contains the model's archetype; openEHR paths are not checked. |
-| `unknown-openehr-node` | Warning | No child node of the template matches this segment (code or name). |
+| `archetype-not-in-workspace` | Information | No `.adl` in the workspace has the model's archetype id; openEHR paths are not checked. |
+| `unknown-openehr-node` | Warning | No child node of the archetype (model) or template (extension in a context) matches this segment (code or name). |
 | `unknown-rm-attribute` | Warning | The RM class of the node has no attribute with this name. |
 | `unknown-fhir-element` | Warning | The FHIR type has no element with this name. |
 | `unknown-fhir-type` | Warning | `as(...)` / `ofType(...)` names something that is not a FHIR R4 type. |
