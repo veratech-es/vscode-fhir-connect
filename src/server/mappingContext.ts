@@ -129,11 +129,11 @@ function openEhrNode(state: OpenEhrState): ContextNode {
   if (!state.known) return { label: 'openEHR', description: 'not resolved', kind: 'openehr' };
   const node = state.nodes[0];
   const what = node ? `${node.label ? `${node.label} · ` : ''}${node.rmType}` : state.rmTypes.join(' | ');
-  const templates = [...new Set(state.nodes.map((n) => n.template.id))];
+  const sources = [...new Set(state.nodes.map((n) => `${n.template.source === 'opt' ? 'template' : 'archetype'} ${n.template.id}`))];
   return {
     label: state.path,
     description: `openEHR · ${what}`,
-    tooltip: templates.length ? `In ${templates.join(', ')}` : undefined,
+    tooltip: sources.length ? `In ${sources.join(', ')}` : undefined,
     kind: 'openehr',
     target: node ? { uri: node.template.uri, offset: node.offset, model: true } : undefined,
   };
@@ -238,16 +238,16 @@ function modelSpec(models: ModelIndex, entry: FileEntry): ContextNode[] {
   const url = scalarAt(mapAt(spec, 'fhirConfig'), 'structureDefinition')?.value;
   if (url) nodes.push(profileNode(models, url, 'structureDefinition'));
   if (entry.archetypeId) {
-    const templates = [...new Set(models.archetypeRoots(entry.archetypeId).map((n) => n.template))];
+    const files = models.archetypeFiles(entry.archetypeId);
     nodes.push({
       label: entry.archetypeId,
-      description: templates.length ? `archetype · in ${templates.length} template${templates.length > 1 ? 's' : ''}` : 'archetype · in no template of the workspace',
-      kind: 'openehr',
-      children: templates.map((t) => ({
-        label: t.id,
-        description: 'template',
+      description: files.length ? 'archetype · ADL' : 'archetype · no ADL archetype in the workspace',
+      kind: files.length ? 'openehr' : 'missing',
+      children: files.map((a) => ({
+        label: a.uri.split('/').pop() ?? a.uri,
+        description: a.definition ? 'ADL archetype' : 'ADL archetype · definition not readable',
         kind: 'template' as const,
-        target: { uri: t.uri, offset: models.archetypeRoots(entry.archetypeId!).find((n) => n.template === t)?.offset ?? t.idOffset, model: true },
+        target: { uri: a.uri, offset: a.rootOffset, model: true },
       })),
     });
   }

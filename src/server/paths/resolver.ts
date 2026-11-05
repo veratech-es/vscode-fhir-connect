@@ -1,6 +1,12 @@
 /*
- * Resolves the FHIR and openEHR paths of mapping files against the FHIR R4 definitions and the
- * operational templates of the workspace, following the rules of the openFHIR engine (grammar v0.9.0):
+ * Resolves the FHIR and openEHR paths of mapping files against the FHIR R4 definitions and the openEHR
+ * models of the workspace, following the rules of the openFHIR engine (grammar v0.9.0):
+ *
+ * - A model mapping maps an archetype: its openEHR paths resolve against the ADL archetype of
+ *   `spec.openEhrConfig.archetype`, never against templates.
+ * - An extension mapping adjusts a model to a template: when a context mapping lists it and names a
+ *   template of the workspace, its paths (and those of the extended model it lands in) resolve
+ *   against the archetype as that template constrains it. Otherwise they resolve like the model's.
  *
  * - `$resource` is the root resource and `$fhirRoot` the FHIR path of the parent method; other FHIR
  *   paths continue the parent's path (`parent.child`).
@@ -111,6 +117,7 @@ const UNKNOWN_OPENEHR: OpenEhrState = { known: false, nodes: [], rmTypes: [], pa
 const IMPLICIT: Record<string, string> = { ELEMENT: 'value', DV_CODED_TEXT: 'defining_code' };
 
 export class PathResolver {
+  /** by file, or by file and the templates a model is resolved against for an extension */
   private cache = new Map<string, FileResolution>();
   private inProgress = new Set<string>();
   private generation = '';
@@ -131,32 +138,37 @@ export class PathResolver {
     }
   }
 
-  resolve(entry: FileEntry): FileResolution {
+  /**
+   * @param templateNodes for a model extended within a context: the archetype as the context's template
+   * constrains it, which its paths then resolve against instead of the ADL archetype
+   */
+  resolve(entry: FileEntry, templateNodes?: OptNode[]): FileResolution {
     this.freshen();
-    const cached = this.cache.get(entry.uri);
+    const key = templateNodes ? `${entry.uri}#${[...new Set(templateNodes.map((n) => n.template.uri))].join('|')}` : entry.uri;
+    const cached = this.cache.get(key);
     if (cached) return cached;
-    if (this.inProgress.has(entry.uri)) return { sites: [], methods: new Map(), notes: [] };
-    this.inProgress.add(entry.uri);
+    if (this.inProgress.has(key)) return { sites: [], methods: new Map(), notes: [] };
+    this.inProgress.add(key);
     try {
-      const resolution = this.resolveFile(entry);
-      this.cache.set(entry.uri, resolution);
+      const resolution = this.resolveFile(entry, templateNodes);
+      this.cache.set(key, resolution);
       return resolution;
     } finally {
-      this.inProgress.delete(entry.uri);
+      this.inProgress.delete(key);
     }
   }
 
-  private resolveFile(entry: FileEntry): FileResolution {
+  private resolveFile(entry: FileEntry, templateNodes: OptNode[] | undefined): FileResolution {
     const previous = this.operators;
     this.operators = !!entry.doc.supportedGrammar?.pathOperators;
     try {
-      return this.resolveMethods(entry);
+      return this.resolveMethods(entry, templateNodes);
     } finally {
       this.operators = previous;
     }
   }
 
-  private resolveMethods(entry: FileEntry): FileResolution {
+  private resolveMethods(entry: FileEntry, templateNodes: OptNode[] | undefined): FileResolution {
     const resolution: FileResolution = { sites: [], methods: new Map(), notes: [] };
     const doc = entry.doc;
     const root = doc.yaml.contents;
@@ -165,14 +177,14 @@ export class PathResolver {
     const methods = isSeq(mappings) ? (mappings.items as Node[]).filter(isMap) : [];
 
     if (entry.fileType === 'model') {
-      const roots = this.modelRoots(entry);
+      const roots = this.modelRoots(entry, templateNodes);
       resolution.roots = roots;
-      this.noteMissingArchetype(entry, roots, resolution);
+      if (!templateNodes) this.noteMissingArchetype(entry, roots, resolution);
       for (const method of methods) this.method(method, roots.root, roots, resolution);
     } else if (entry.fileType === 'extension' && entry.extends) {
       const [model] = this.index.resolve(entry.extends, entry, 'model');
       if (!model || model.fileType !== 'model') return resolution;
-      const base = this.resolve(model);
+      const base = this.resolve(model, this.contextTemplateNodes(entry, model));
       if (!base.roots) return resolution;
       resolution.roots = base.roots;
       for (const method of methods) {
@@ -208,8 +220,24 @@ export class PathResolver {
     return resolution;
   }
 
+  /**
+   * The archetype of the model an extension extends, as constrained by the templates of the contexts
+   * that list the extension; undefined when no such template is in the workspace.
+   */
+  private contextTemplateNodes(extension: FileEntry, model: FileEntry): OptNode[] | undefined {
+    if (!model.archetypeId) return undefined;
+    const ids = new Set<string>();
+    for (const usage of this.index.usages(extension)) {
+      if (usage.ref.kind !== 'extensions' || usage.entry.fileType !== 'context') continue;
+      const id = scalarAt(mapAt(mapAt(usage.entry.doc.yaml.contents as YAMLMap, 'context'), 'template'), 'id')?.value;
+      if (id) ids.add(id.trim());
+    }
+    const nodes = [...ids].flatMap((id) => this.models.templateById(id)).flatMap((t) => t.archetypes.get(model.archetypeId!) ?? []);
+    return nodes.length > 0 ? nodes : undefined;
+  }
+
   /** Where the paths of a model start: from its own configuration, or from the slots that use it. */
-  private modelRoots(entry: FileEntry): Roots {
+  private modelRoots(entry: FileEntry, templateNodes?: OptNode[]): Roots {
     const doc = entry.doc;
     const root = doc.yaml.contents as YAMLMap;
     const spec = mapAt(root, 'spec');
@@ -236,14 +264,18 @@ export class PathResolver {
       .filter((c): c is { context: Context; roots: Roots } => !!c);
 
     const archetypeId = entry.archetypeId;
-    const occurrences = archetypeId ? this.models.archetypeRoots(archetypeId) : [];
+    const occurrences = templateNodes ?? (archetypeId ? this.models.adlRoots(archetypeId) : []);
     const archetypeState: OpenEhrState =
       occurrences.length > 0 ? { known: true, nodes: occurrences, rmTypes: rmTypesOf(occurrences), path: archetypeId! } : UNKNOWN_OPENEHR;
-    const compositions = [...new Set(occurrences.map((n) => n.template.root))];
+    // an archetype on its own is only a composition when it is one
+    const compositions = [...new Set(occurrences.map((n) => n.template.root))].filter((n) => n.template.source === 'opt' || n.rmType === 'COMPOSITION');
+    // without a template, `$composition` is a COMPOSITION only the reference model constrains
     const compositionState: OpenEhrState =
       compositions.length > 0
         ? { known: true, nodes: compositions, rmTypes: rmTypesOf(compositions), path: compositions[0].archetypeId ?? '$composition' }
-        : UNKNOWN_OPENEHR;
+        : occurrences.length > 0
+          ? { known: true, nodes: [], rmTypes: ['COMPOSITION'], path: '$composition' }
+          : UNKNOWN_OPENEHR;
 
     // a model can be used on its own and as a slot: its paths must fit every use
     const fhir = unionFhir([...(own.known || callers.length === 0 ? [own] : []), ...callers.map((c) => c.context.fhir)]);
@@ -258,14 +290,14 @@ export class PathResolver {
   }
 
   private noteMissingArchetype(entry: FileEntry, roots: Roots, resolution: FileResolution): void {
-    if (!this.models.hasTemplates || !entry.archetypeId || roots.archetype.known) return;
+    if (!this.models.hasOpenEhrModels || !entry.archetypeId || roots.archetype.known) return;
     const archetype = scalarAt(mapAt(mapAt(entry.doc.yaml.contents as YAMLMap, 'spec'), 'openEhrConfig'), 'archetype');
     if (!archetype) return;
     resolution.notes.push({
       ...archetype.span,
       severity: 'information',
-      code: 'archetype-not-in-templates',
-      message: `No template in the workspace contains \`${entry.archetypeId}\`; its openEHR paths are not checked.`,
+      code: 'archetype-not-in-workspace',
+      message: `No ADL archetype \`${entry.archetypeId}\` in the workspace; its openEHR paths are not checked. Model mappings are checked against the archetype (.adl), not against templates.`,
     });
   }
 
@@ -806,7 +838,10 @@ function attributeStep(state: OpenEhrState, step: OpenEhrStep, path: string): { 
         const named = step.name ? matching.filter((c) => c.label === step.name) : [];
         nodes.push(...(named.length > 0 ? named : matching));
       } else if (children.some((c) => slotAccepts(c, step.code!))) {
-        unsure = true;
+        // an archetype's slot: the archetype that fills it, when the workspace has it
+        const fillers = children.flatMap((c) => (slotAccepts(c, step.code!) ? (c.template.slotFillers?.(c) ?? []) : [])).filter((r) => r.archetypeId === step.code);
+        if (fillers.length > 0) nodes.push(...new Set(fillers));
+        else unsure = true;
       }
       continue;
     }
@@ -843,7 +878,7 @@ function attributeStep(state: OpenEhrState, step: OpenEhrStep, path: string): { 
     const what = step.name ? `[${step.code}, '${step.name}']` : `[${step.code}]`;
     return {
       state: UNKNOWN_OPENEHR,
-      problem: `No node \`${what}\` in \`${attribute}\` of ${nodeLabel(state.nodes)} in the template${templateNames(state.nodes)}.`,
+      problem: `No node \`${what}\` in \`${attribute}\` of ${nodeLabel(state.nodes)} in ${modelNames(state.nodes)}.`,
       code: 'unknown-openehr-node',
     };
   }
@@ -854,8 +889,15 @@ function attributeStep(state: OpenEhrState, step: OpenEhrStep, path: string): { 
   };
 }
 
-function templateNames(nodes: OptNode[]): string {
-  const ids = [...new Set(nodes.map((n) => n.template.id))];
-  return ids.length === 1 ? ` \`${ids[0]}\`` : `s ${ids.map((id) => `\`${id}\``).join(', ')}`;
+/** `the template \`X\``, `the archetype \`Y\`` or a list of either. */
+function modelNames(nodes: OptNode[]): string {
+  const opt = [...new Set(nodes.filter((n) => n.template.source === 'opt').map((n) => n.template.id))];
+  const adl = [...new Set(nodes.filter((n) => n.template.source === 'adl').map((n) => n.template.id))];
+  const list = (ids: string[]) => ids.map((id) => `\`${id}\``).join(', ');
+  const parts = [
+    opt.length ? `the template${opt.length > 1 ? 's' : ''} ${list(opt)}` : '',
+    adl.length ? `the archetype${adl.length > 1 ? 's' : ''} ${list(adl)}` : '',
+  ].filter(Boolean);
+  return parts.join(' and ');
 }
 

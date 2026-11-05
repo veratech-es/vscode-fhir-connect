@@ -49,15 +49,18 @@ on a FHIR resource or an openEHR Composition and shows the result.
   - A **warning** marks names that no file in the workspace declares.
   - `appendTo` jumps to, completes and checks the method of the model named in `spec.extends`
     (`parent.child` for nested methods).
-- **Paths against templates and FHIR R4**: the FHIR and openEHR paths of every method are resolved
-  the way the openFHIR engine reads them, against the FHIR R4 definitions (bundled) and the
-  operational templates (`.opt`) and StructureDefinitions found in the workspace.
-  - **Hover** on a path segment: node label, RM type, cardinality and template, or FHIR element type
+- **Paths against archetypes, templates and FHIR R4**: the FHIR and openEHR paths of every method
+  are resolved the way the openFHIR engine reads them, against the FHIR R4 definitions (bundled) and
+  the ADL 1.4 archetypes (`.adl`), operational templates (`.opt`) and StructureDefinitions found in
+  the workspace. Model mappings are checked against their archetype only; extension mappings listed
+  in a context, against the context's template.
+  - **Hover** on a path segment: node label, RM type, cardinality and archetype or template, or FHIR element type
     and cardinality, with the full resolved path.
-  - **Inlay hints** after each `with` path (`Labortest-Kategorie · ELEMENT`, `CodeableConcept[]`).
+  - **Inlay hints** after each `with` path (`Test name · ELEMENT`, `CodeableConcept[]`).
   - **Completion** of the next segment: child nodes as `attribute[code]` (filter by label), RM
     attributes, FHIR elements and `as(T)` casts.
-  - **Go to Definition** from an openEHR segment or `context.template.id` into the template, and from
+  - **Go to Definition** from an openEHR segment into the archetype or template it was checked
+    against, from `context.template.id` into the template, and from
     a profile URL into the StructureDefinition.
   - **Go to Archetype Definition** (Ctrl+Alt+F12, peek with Ctrl+Shift+Alt+F12) opens the same node
     in the ADL 1.4 archetype (`.adl`) when the archetypes are in the workspace.
@@ -168,6 +171,8 @@ tests run on it.
    to openEHR* / *to FHIR*, engine issues in *Problems*.
    **0.5.1:** ready for the Visual Studio Marketplace and Open VSX (icon, metadata,
    [publishing guide](docs/publishing.md)).
+   **0.6.0:** model mappings are checked against their ADL 1.4 archetype, extension mappings
+   against the template of their context.
 6. **Later:** AQL conversion, web templates, ADL 2.
 
 ## Author

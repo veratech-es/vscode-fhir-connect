@@ -24,6 +24,7 @@ export class ModelIndex {
     }
     if (/\.adl$/i.test(uri)) {
       const archetype = parseAdl(uri, text);
+      if (archetype?.definition) archetype.definition.slotFillers = (slot) => this.slotFillers(slot);
       if (archetype) this.adl.set(uri, archetype);
       if (archetype) this.lines.set(uri, lineStarts(text));
       return !!archetype;
@@ -63,6 +64,11 @@ export class ModelIndex {
     return this.templates.size > 0;
   }
 
+  /** True when the workspace has ADL archetypes or operational templates. */
+  get hasOpenEhrModels(): boolean {
+    return this.templates.size > 0 || this.adl.size > 0;
+  }
+
   allTemplates(): Template[] {
     return (this.sorted ??= [...this.templates.values()].sort((a, b) => a.uri.localeCompare(b.uri)));
   }
@@ -74,6 +80,29 @@ export class ModelIndex {
   /** Every archetype root, in any template, of the archetype `id`. */
   archetypeRoots(id: string): OptNode[] {
     return this.allTemplates().flatMap((t) => t.archetypes.get(id) ?? []);
+  }
+
+  /** The roots of the ADL archetypes of the workspace with this id that could be read, by file name order. */
+  adlRoots(id: string): OptNode[] {
+    return this.archetypeFiles(id).flatMap((a) => (a.definition ? [a.definition.root] : []));
+  }
+
+  /** The roots of the ADL archetypes a slot accepts, one per archetype id. */
+  slotFillers(slot: OptNode): OptNode[] {
+    if (slot.kind !== 'slot') return [];
+    const patterns = (slot.includes ?? []).flatMap((p) => {
+      try {
+        return [new RegExp(`^(?:${p})$`)];
+      } catch {
+        return [];
+      }
+    });
+    const roots = new Map<string, OptNode>();
+    for (const archetype of [...this.adl.values()].sort((a, b) => a.uri.localeCompare(b.uri))) {
+      if (!archetype.definition || roots.has(archetype.id) || archetype.definition.root.rmType !== slot.rmType) continue;
+      if (patterns.some((p) => p.test(archetype.id))) roots.set(archetype.id, archetype.definition.root);
+    }
+    return [...roots.values()];
   }
 
   /** The ADL archetypes of the workspace with this id, by file name order. */

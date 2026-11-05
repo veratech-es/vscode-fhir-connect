@@ -1,11 +1,13 @@
 # FHIRConnect for VS Code: cheat sheet
 
-Version 0.5.1. The [user guide](user-guide.md) explains each feature in detail.
+Version 0.6.0. The [user guide](user-guide.md) explains each feature in detail.
 
 The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` or
 `grammar: FHIRConnect/v1.0.0` line; each file is checked with the version it declares.
-Path features also need the operational templates (`.opt`) somewhere in the workspace;
-FHIR R4 is bundled. Running mappings needs an openFHIR engine, e.g. in Docker.
+Path features also need the ADL 1.4 archetypes (`.adl`) of your model mappings and the
+operational templates (`.opt`) of your contexts somewhere in the workspace; FHIR R4 is bundled.
+Model mappings are checked against the `.adl` only; extensions listed in a context, against
+the context's template. Running mappings needs an openFHIR engine, e.g. in Docker.
 
 ## Keyboard shortcuts
 
@@ -51,10 +53,10 @@ FHIR R4 is bundled. Running mappings needs an openFHIR engine, e.g. in Docker.
 | Name completion | After `slotArchetype:`, `extends:`, `start:`, `appendTo:`, `- ` in `archetypes` / `extensions` |
 | Reference hover | Mouse over a reference: target file with link |
 | Unresolved names | Automatic warning on names no file declares |
-| Path hover | Mouse over a path segment: node label, RM type, cardinality, template / FHIR type |
+| Path hover | Mouse over a path segment: node label, RM type, cardinality, archetype or template / FHIR type |
 | Inlay hints | Grey hint after each `with.fhir` / `with.openehr` line |
 | Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)`, types inside `as(` |
-| Jump into the template | `F12` on an openEHR path segment or `context.template.id` |
+| Jump into the archetype or template | `F12` on an openEHR path segment (archetype in a model, template in an extension), or on `context.template.id` |
 | Jump into the archetype | `Ctrl+Alt+F12` on an openEHR path segment (needs the `.adl` in the workspace) |
 | Path warnings | Automatic warning on the first segment that does not resolve |
 | Grammar v1.0.0 | Automatic, from the `grammar` line; v0.9.0 files keep working |
@@ -107,7 +109,7 @@ Quote values YAML would read as numbers or booleans: `criteria: "524"`.
 | `$resource.x` | root resource (`structureDefinition`) |
 | `$fhirRoot.x`, `x` | parent method's FHIR path (`parent.x`) |
 | `$archetype/x` | archetype root |
-| `$composition/x` | template's root COMPOSITION |
+| `$composition/x` | template's root COMPOSITION (RM only in a model of a non-COMPOSITION archetype) |
 | `$openehrRoot/x`, `x` | parent method's openEHR path (`parent/x`) |
 | `$reference` | parent's openEHR context; FHIR side continues in the referenced resource |
 | `^.x`, `^^.x` (v1.0.0) | one element back up the parent's FHIR path per `^` |
