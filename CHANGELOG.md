@@ -1,6 +1,24 @@
 # Changelog
 
-## 0.6.0 (unreleased)
+## 0.7.0 (2026-11-12)
+
+Mappings can now be brought to an openFHIR engine on a server, which does not see your mapping folder.
+
+- New command *FHIRConnect: Upload Mappings to openFHIR*, also in the Explorer context menu of
+  folders, mapping files and `.opt` files. It uploads context, model and extension mappings and
+  operational templates through the engine's REST API (`/fc/context`, `/fc/model`, `/opt`). A file
+  replaces what the engine stores under the same name (a context, under the same template) and
+  creates the rest. The plan is shown before anything is sent, and refused files are reported in
+  *Problems*. Nothing stored in the engine is deleted.
+- New setting `fhirconnect.openfhir.syncMethod`: `bootstrap` (default, as before) makes the engine
+  reload its own bootstrap folder, and `api` makes *Sync Mappings with openFHIR* and saving upload the
+  files through the REST API.
+- *Check openFHIR Connection* counts the stored context mappings, model mappings and templates when
+  the method is `api`.
+- The user guide says what *Sync Mappings with openFHIR* does with an engine on another computer and
+  warns that the open-source engine has no authentication.
+
+## 0.6.0 (2026-11-05)
 
 Model mappings are checked against their archetype, not against templates, following the logic of
 FHIRConnect: a model maps an archetype, an extension adjusts it to a template, a context loads both.

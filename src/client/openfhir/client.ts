@@ -1,6 +1,7 @@
 /**
  * HTTP client for an openFHIR engine (https://github.com/openFHIR/openfhir, 3.0.3 or later): the
- * bootstrap of mapping files and the FHIRconnect operations `$toopenehr` and `$tofhir`. It does not
+ * bootstrap of mapping files, the REST API that stores mappings and templates (`/fc/context`,
+ * `/fc/model`, `/opt`) and the FHIRconnect operations `$toopenehr` and `$tofhir`. It does not
  * depend on VS Code, so it can be tested against a plain HTTP server.
  */
 
@@ -30,6 +31,23 @@ export interface BootstrapSummary {
   failed: number;
   files: BootstrapFile[];
 }
+
+/** Where the engine stores each kind of stored object. */
+export type StoredKind = 'context' | 'model' | 'template';
+
+/** A mapping or template stored in the engine, as its list endpoint returns it. */
+export interface StoredObject {
+  kind: StoredKind;
+  id: string;
+  /** `metadata.name` of a mapping; the template id as uploaded (`originalTemplateId`) of a template */
+  name: string;
+  /** `model` or `extension` for a model mapping */
+  type?: string;
+  /** the template a context mapping is for (the engine keeps one context per template) */
+  templateId?: string;
+}
+
+const STORE_PATHS: Record<StoredKind, string> = { context: '/fc/context', model: '/fc/model', template: '/opt' };
 
 export interface ToOpenEhrResult {
   /** the Composition, pretty-printed when it is JSON */
@@ -82,6 +100,44 @@ export class OpenFhirClient {
     return toSummary(await this.json('POST', '/$bootstrap'));
   }
 
+  /** The mappings or templates stored in the engine. */
+  async listStored(kind: StoredKind): Promise<StoredObject[]> {
+    const answer = await this.json('GET', STORE_PATHS[kind]);
+    if (!Array.isArray(answer)) throw new OpenFhirError(`The engine did not answer GET ${STORE_PATHS[kind]} with a list. Does it have the openFHIR REST API?`);
+    return (answer as Record<string, unknown>[]).flatMap((item): StoredObject[] => {
+      const id = typeof item.id === 'string' ? item.id : undefined;
+      if (!id) return [];
+      if (kind === 'template') {
+        const name = [item.originalTemplateId, item.displayTemplateId, item.templateId].find((v) => typeof v === 'string') as string | undefined;
+        return name ? [{ kind, id, name }] : [];
+      }
+      const metadata = item.metadata as { name?: unknown } | undefined;
+      const context = item.context as { template?: { id?: unknown } } | undefined;
+      return [
+        {
+          kind,
+          id,
+          name: typeof metadata?.name === 'string' ? metadata.name : '',
+          type: typeof item.type === 'string' ? item.type : undefined,
+          templateId: typeof context?.template?.id === 'string' ? context.template.id : undefined,
+        },
+      ];
+    });
+  }
+
+  /**
+   * Creates (no `id`) or replaces (`id`) a mapping or template in the engine: YAML for a mapping, the
+   * XML of the operational template for a template. Returns the id the engine keeps it under.
+   */
+  async store(kind: StoredKind, content: string, id?: string): Promise<string> {
+    const path = STORE_PATHS[kind] + (id ? `/${encodeURIComponent(id)}` : '');
+    const contentType = kind === 'template' ? 'application/xml' : 'application/x-yaml';
+    const answer = await this.json(id ? 'PUT' : 'POST', path, content, contentType);
+    const stored = answer && typeof answer === 'object' ? (answer as { id?: unknown }).id : undefined;
+    if (typeof stored !== 'string') throw new OpenFhirError(`The engine did not answer ${id ? 'PUT' : 'POST'} ${STORE_PATHS[kind]} with the stored object.`);
+    return stored;
+  }
+
   /** Maps a FHIR Bundle or resource to an openEHR Composition. */
   async toOpenEhr(resource: string, params: { templateId?: string; format: CompositionFormat; ehrId?: string }): Promise<ToOpenEhrResult> {
     const query = new URLSearchParams({ format: params.format });
@@ -111,9 +167,9 @@ export class OpenFhirClient {
     };
   }
 
-  private async json(method: 'GET' | 'POST', path: string, body?: string): Promise<unknown> {
+  private async json(method: 'GET' | 'POST' | 'PUT', path: string, body?: string, contentType = 'application/fhir+json'): Promise<unknown> {
     const headers: Record<string, string> = { Accept: 'application/fhir+json, application/json' };
-    if (body !== undefined) headers['Content-Type'] = 'application/fhir+json';
+    if (body !== undefined) headers['Content-Type'] = contentType;
     if (this.options.token) headers.Authorization = `Bearer ${this.options.token}`;
     let response: Response;
     try {
@@ -126,7 +182,7 @@ export class OpenFhirClient {
     const parsed = parseJson(text);
     if (!response.ok) {
       const issues = outcomeIssues(parsed);
-      const detail = issues.map((i) => i.text).join(' ') || text.trim().slice(0, 300) || response.statusText;
+      const detail = issues.map((i) => i.text).join(' ') || errorText(parsed) || text.trim().slice(0, 300) || response.statusText;
       throw new OpenFhirError(`openFHIR answered ${response.status} to ${method} ${path.split('?')[0]}: ${detail}`, response.status, issues);
     }
     if (parsed === undefined && text.trim()) throw new OpenFhirError(`openFHIR did not answer ${method} ${path.split('?')[0]} with JSON.`);
@@ -175,6 +231,13 @@ function toSummary(value: unknown): BootstrapSummary {
   if (!isSummary(value)) throw new OpenFhirError('The engine did not answer POST /$bootstrap with a bootstrap summary. Is it openFHIR 3.0.3 or later?');
   const count = (n: unknown) => (typeof n === 'number' ? n : 0);
   return { created: count(value.created), updated: count(value.updated), unchanged: count(value.unchanged), failed: count(value.failed), files: value.files };
+}
+
+/** The reason in an error answer of the REST API: a list of messages, or a Spring error object. */
+function errorText(value: unknown): string | undefined {
+  if (Array.isArray(value) && value.every((v) => typeof v === 'string')) return value.join(' ') || undefined;
+  const message = value && typeof value === 'object' ? (value as { message?: unknown }).message : undefined;
+  return typeof message === 'string' && message ? message : undefined;
 }
 
 function parseJson(text: string): unknown {

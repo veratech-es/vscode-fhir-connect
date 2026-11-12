@@ -2,7 +2,7 @@
   "name": "vscode-fhir-connect",
   "displayName": "FHIRConnect",
   "description": "Editing support for FHIRConnect openEHR <-> FHIR mapping files: validation, completion, navigation, path resolution against openEHR templates and FHIR R4, and running mappings with openFHIR.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "veratech-es",
   "license": "Apache-2.0",
   "icon": "images/icon.png",
@@ -90,6 +90,11 @@
         "category": "FHIRConnect"
       },
       {
+        "command": "fhirconnect.openfhir.upload",
+        "title": "Upload Mappings to openFHIR",
+        "category": "FHIRConnect"
+      },
+      {
         "command": "fhirconnect.openfhir.checkConnection",
         "title": "Check openFHIR Connection",
         "category": "FHIRConnect"
@@ -123,10 +128,23 @@
           "default": "http://localhost:8080",
           "markdownDescription": "Base URL of the openFHIR engine (3.0.3 or later) that runs the mappings, e.g. `http://localhost:8080`."
         },
+        "fhirconnect.openfhir.syncMethod": {
+          "type": "string",
+          "enum": [
+            "bootstrap",
+            "api"
+          ],
+          "enumDescriptions": [
+            "The engine reads the mappings from its bootstrap folder, which is this workspace folder mounted in the engine (local Docker engine). Sync makes it reload the folder (`POST /$bootstrap`).",
+            "The extension uploads the mapping files and operational templates through the REST API of the engine (`/fc/context`, `/fc/model`, `/opt`). For an engine on another computer."
+          ],
+          "default": "bootstrap",
+          "markdownDescription": "How *Sync Mappings with openFHIR* and `#fhirconnect.openfhir.syncOnSave#` bring the workspace to the engine: `bootstrap` makes the engine reload its own bootstrap folder, `api` uploads the files through the REST API of the engine."
+        },
         "fhirconnect.openfhir.syncOnSave": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Make openFHIR reload its bootstrap folder (`POST /$bootstrap`) when a mapping file or an operational template inside `#fhirconnect.openfhir.bootstrapFolder#` is saved."
+          "markdownDescription": "Bring a mapping file or an operational template to openFHIR when it is saved: with `#fhirconnect.openfhir.syncMethod#` `bootstrap` the engine reloads its bootstrap folder (only for files inside `#fhirconnect.openfhir.bootstrapFolder#`), with `api` the saved file is uploaded."
         },
         "fhirconnect.openfhir.bootstrapFolder": {
           "type": "string",
@@ -244,6 +262,11 @@
           "command": "fhirconnect.openfhir.runToFhir",
           "when": "resourceExtname == .json",
           "group": "fhirconnect@2"
+        },
+        {
+          "command": "fhirconnect.openfhir.upload",
+          "when": "explorerResourceIsFolder || resourceExtname =~ /^\\.(ya?ml|opt)$/",
+          "group": "fhirconnect@3"
         }
       ]
     },

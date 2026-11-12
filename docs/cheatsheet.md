@@ -32,7 +32,7 @@ the context's template. Running mappings needs an openFHIR engine, e.g. in Docke
 | Problems panel | `Ctrl+Shift+M` | `Cmd+Shift+M` | validation |
 | Next / previous problem | `F8` / `Shift+F8` | `F8` / `Shift+F8` | validation |
 | Show Mapping Context | `Ctrl+Alt+M` | `Cmd+Option+M` | mapping files |
-| Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` | *FHIRConnect: New Mapping File*, *Peek Archetype Definition*, *Run Mapping to openEHR / to FHIR*, *Sync Mappings with openFHIR*, *Check openFHIR Connection*, *Set openFHIR Token* |
+| Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` | *FHIRConnect: New Mapping File*, *Peek Archetype Definition*, *Run Mapping to openEHR / to FHIR*, *Sync Mappings with openFHIR*, *Upload Mappings to openFHIR*, *Check openFHIR Connection*, *Set openFHIR Token* |
 | Save all (after a rename) | `Ctrl+K S` | `Cmd+Option+S` | rename |
 
 ## Features at a glance
@@ -65,6 +65,7 @@ the context's template. Running mappings needs an openFHIR engine, e.g. in Docke
 | Start openFHIR | `docker compose up -d` with [`docs/openfhir/docker-compose.yml`](openfhir/docker-compose.yml) and `MAPPINGS` = your mapping folder |
 | Check the engine | Click *openFHIR* in the status bar, or *FHIRConnect: Check openFHIR Connection* |
 | Reload mappings in the engine | Automatic on save, or *FHIRConnect: Sync Mappings with openFHIR*; load failures go to *Problems* |
+| Upload mappings to an engine on a server | `fhirconnect.openfhir.syncMethod` = `api`: save or *Sync Mappings with openFHIR* uploads them; or right-click a folder or files → *Upload Mappings to openFHIR* (shows the plan first) |
 | FHIR → openEHR | Open a FHIR resource or Bundle (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to openEHR*, pick the template |
 | openEHR → FHIR | Open a canonical or flat Composition (`.json`), play button (or right-click the file in the Explorer) → *Run Mapping to FHIR*, pick the template |
 | Engine issues | *Problems* (source *openFHIR*) and *Output* → *FHIRConnect openFHIR* |
@@ -127,6 +128,7 @@ DV_CODED_TEXT→`defining_code` may be left out, as in the engine.
 | `fhirconnect.validation.paths` | `true` |
 | `fhirconnect.inlayHints.enable` | `true` |
 | `fhirconnect.openfhir.url` | `http://localhost:8080` |
+| `fhirconnect.openfhir.syncMethod` | `bootstrap` (or `api`) |
 | `fhirconnect.openfhir.syncOnSave` | `true` |
 | `fhirconnect.openfhir.bootstrapFolder` | empty (workspace folder) |
 | `fhirconnect.openfhir.format` | `canonical` (or `flat`) |
