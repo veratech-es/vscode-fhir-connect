@@ -175,6 +175,8 @@ tests run on it.
    [publishing guide](docs/publishing.md)).
    **0.6.0:** model mappings are checked against their ADL 1.4 archetype, extension mappings
    against the template of their context.
+   **0.7.0:** mappings and templates are uploaded to an openFHIR engine on a server through its
+   REST API (*Upload Mappings to openFHIR*, `fhirconnect.openfhir.syncMethod`).
 6. **Later:** AQL conversion, web templates, ADL 2.
 
 ## Author

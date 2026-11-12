@@ -29,8 +29,14 @@ for `Alt`. The [cheat sheet](cheatsheet.md) lists both.
 
 ### Install
 
-The extension is not on the Marketplace yet; it is installed from a `.vsix` file built from this
-repository (or a copy of one):
+Install **FHIRConnect** (`veratech-es.vscode-fhir-connect`) from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=veratech-es.vscode-fhir-connect):
+in VS Code, open the Extensions view (`Ctrl+Shift+X`), search for *FHIRConnect* and select *Install*.
+VS Code then updates it when a new version is published.
+
+The `.vsix` file of each version is also attached to its
+[GitHub release](https://github.com/veratech-es/vscode-fhir-connect/releases), and you can build one
+from this repository:
 
 ```shell
 npm ci
