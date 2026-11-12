@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 (unreleased)
+## 0.7.0 (2026-11-12)
 
 Mappings can now be brought to an openFHIR engine on a server, which does not see your mapping folder.
 
@@ -18,7 +18,7 @@ Mappings can now be brought to an openFHIR engine on a server, which does not se
 - The user guide says what *Sync Mappings with openFHIR* does with an engine on another computer and
   warns that the open-source engine has no authentication.
 
-## 0.6.0 (unreleased)
+## 0.6.0 (2026-11-05)
 
 Model mappings are checked against their archetype, not against templates, following the logic of
 FHIRConnect: a model maps an archetype, an extension adjusts it to a template, a context loads both.
