@@ -74,7 +74,8 @@ on a FHIR resource or an openEHR Composition and shows the result.
   open FHIR resource or Composition to an openFHIR engine (3.0.3 or later) and open the result beside
   it, with the engine's issues in *Problems*. They are on the play button of the editor title and in
   the editor and Explorer context menus. The engine reloads the mapping files on save, or by hand
-  with *Sync Mappings with openFHIR*; *Check openFHIR Connection* and the *openFHIR* status bar item
+  with *Sync Mappings with openFHIR*. For an engine on a server, *Upload Mappings to openFHIR* (or
+  the `api` sync method) sends the mapping files and templates through its REST API; *Check openFHIR Connection* and the *openFHIR* status bar item
   show whether it is reachable, and *Set openFHIR Token* stores a bearer token for an engine behind
   authentication. See [`docs/openfhir/docker-compose.yml`](docs/openfhir/docker-compose.yml) to
   start it.
@@ -95,7 +96,8 @@ affected.
 | `fhirconnect.validation.paths` | `true` | Check paths against FHIR R4 and the workspace templates. |
 | `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to. |
 | `fhirconnect.openfhir.url` | `http://localhost:8080` | Base URL of the openFHIR engine. |
-| `fhirconnect.openfhir.syncOnSave` | `true` | Make openFHIR reload its mappings when a mapping file or `.opt` is saved. |
+| `fhirconnect.openfhir.syncMethod` | `bootstrap` | `bootstrap`: the engine reloads its own bootstrap folder. `api`: the files are uploaded through its REST API. |
+| `fhirconnect.openfhir.syncOnSave` | `true` | Bring a mapping file or `.opt` to openFHIR when it is saved. |
 | `fhirconnect.openfhir.bootstrapFolder` | empty | Folder the engine reads its mappings from; empty = the workspace folder. |
 | `fhirconnect.openfhir.format` | `canonical` | Format of the Composition returned by *Run Mapping to openEHR* (`canonical` or `flat`). |
 | `fhirconnect.trace.server` | `off` | Trace the communication with the language server. |

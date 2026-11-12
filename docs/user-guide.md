@@ -529,7 +529,15 @@ icon.
 The extension can run the mappings of the workspace with an [openFHIR](https://github.com/openFHIR/openfhir)
 engine (version 3.0.3 or later, the first one that reads grammar v1.0.0 sub-contexts) and show the
 result next to the input. The engine is not part of the extension: it runs on your computer in
-Docker, and the extension talks to it over HTTP at `fhirconnect.openfhir.url`.
+Docker, or on a server, and the extension talks to it over HTTP at `fhirconnect.openfhir.url`.
+
+The engine has to know your mappings before it can run them. There are two ways, set with
+`fhirconnect.openfhir.syncMethod`:
+
+| Method | When | How the mappings reach the engine |
+| --- | --- | --- |
+| `bootstrap` (default) | The engine runs on your computer in Docker ([11.1](#111-start-the-engine)) | Your mapping folder is mounted as the engine's bootstrap folder; the extension only asks the engine to read it again. No file is sent. |
+| `api` | The engine runs on a server ([11.4](#114-another-engine)) | The extension uploads the mapping files and operational templates through the engine's REST API. |
 
 ### 11.1 Start the engine
 
@@ -553,14 +561,21 @@ The open-source openFHIR has no authentication and is meant for testing, not for
 
 ### 11.2 Keep the engine in sync
 
+With `fhirconnect.openfhir.syncMethod` set to `bootstrap`:
+
 | How | What happens |
 | --- | --- |
 | Save a mapping file or a `.opt` inside the bootstrap folder | With `fhirconnect.openfhir.syncOnSave` on, the extension calls `POST /$bootstrap` and the engine reloads the changed files. Several files saved at once give one reload. |
 | *FHIRConnect: Sync Mappings with openFHIR* | The same, by hand, with a message that counts created, updated, unchanged and failed files. |
 
-Files the engine cannot load (for example `slotArchetype` together with `slotContext`) appear in
-*Problems* on that file, with the engine's reason and source *openFHIR*. When the workspace folder
-is not the folder mounted as bootstrap folder, set `fhirconnect.openfhir.bootstrapFolder`.
+`POST /$bootstrap` makes the engine read **its own** bootstrap folder again. With an engine on another
+computer, that is a folder on that computer, so your local changes do not reach it this way: use the
+`api` method. Files the engine cannot load (for example `slotArchetype` together with `slotContext`)
+appear in *Problems* on that file, with the engine's reason and source *openFHIR*. When the workspace
+folder is not the folder mounted as bootstrap folder, set `fhirconnect.openfhir.bootstrapFolder`.
+
+With `fhirconnect.openfhir.syncMethod` set to `api`, see [11.5](#115-upload-mappings-through-the-rest-api):
+*Sync Mappings with openFHIR* uploads the whole workspace, and saving a file uploads that file.
 
 ### 11.3 Run a mapping
 
@@ -589,8 +604,52 @@ and the KDS mappings of the mapping library.
 `fhirconnect.openfhir.url` may point to an engine on another computer. Before the first file goes to
 an engine that is not on `localhost`, the extension asks for confirmation once per session. For an
 engine behind authentication, *FHIRConnect: Set openFHIR Token* stores a bearer token in the VS Code
-secret storage (not in `settings.json`); run it with an empty value to remove the token. The engine
-then still needs the mapping files in its own bootstrap folder.
+secret storage (not in `settings.json`); run it with an empty value to remove the token.
+
+An engine on another computer does not see your mapping folder. Set `fhirconnect.openfhir.syncMethod`
+to `api` and upload the mappings through its REST API ([11.5](#115-upload-mappings-through-the-rest-api)),
+or copy them to the engine's own bootstrap folder yourself and run *Sync Mappings with openFHIR*
+with the `bootstrap` method. The open-source openFHIR has no authentication: anyone who reaches its
+port can read, change or delete the mappings it stores, so open that port only to the computers that
+need it.
+
+### 11.5 Upload mappings through the REST API
+
+*FHIRConnect: Upload Mappings to openFHIR* sends mapping files and operational templates to the
+engine through its REST API: `/fc/context` for context mappings, `/fc/model` for model and extension
+mappings, `/opt` for templates. It works with any `fhirconnect.openfhir.syncMethod`.
+
+| Start it from | Uploads |
+| --- | --- |
+| The command palette | Every FHIRConnect mapping file (`.yml`, `.yaml` with a `grammar: FHIRConnect/...` line) and `.opt` of the workspace |
+| A folder in the Explorer (right-click → *Upload Mappings to openFHIR*) | The same, inside that folder |
+| One or more files in the Explorer | Those files |
+| *Sync Mappings with openFHIR*, with the `api` method | The whole workspace, like the command palette |
+| Saving a file, with the `api` method and `syncOnSave` on | The saved files, without asking; failures are reported |
+
+The extension first reads what the engine stores and pairs each file with it:
+
+| The engine keeps | A file with… | …replaces it |
+| --- | --- | --- |
+| One model or extension mapping per `metadata.name` | the same `metadata.name` | `PUT /fc/model/{id}` |
+| One context mapping per template | the same `metadata.name`, or the same `context.template.id` | `PUT /fc/context/{id}` |
+| One template per template id (case-insensitive) | the same `template_id` | `PUT /opt/{id}` |
+
+Any other file is created (`POST`). Templates go first, then models, extensions and contexts, so that
+each file finds what it uses. Before anything is sent the extension shows the plan: how many files
+are new, which ones replace a stored one (and under which name, when a context replaces another of
+the same template), and which ones are skipped. The plan is also written to *View* → *Output* →
+*FHIRConnect openFHIR*. A file is skipped when it has no `metadata.name` or `template_id`, has another
+`type`, or has the same name (or, for a context, the same template) as another file of the upload.
+
+Files the engine refuses appear in *Problems* on that file with the engine's reason, source
+*openFHIR*; skipped files get a warning. Mappings and templates the engine stores and that are not in
+the upload are left as they are: the extension never deletes them.
+
+Because the engine keeps one namespace of names, upload one project at a time: the folders of your
+project and the models it uses, not a library with several projects that reuse a name such as
+`KDS_composition`. Before the first upload to an engine that is not on `localhost`, the extension
+asks for confirmation once per session.
 
 ## 12. Settings
 
@@ -602,7 +661,8 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | `fhirconnect.validation.paths` | `true` | Check FHIR and openEHR paths against FHIR R4 and the workspace archetypes and templates. |
 | `fhirconnect.inlayHints.enable` | `true` | Show what each `with` path resolves to at the end of the line. |
 | `fhirconnect.openfhir.url` | `http://localhost:8080` | Base URL of the openFHIR engine. |
-| `fhirconnect.openfhir.syncOnSave` | `true` | Make openFHIR reload its bootstrap folder when a mapping file or `.opt` in it is saved. |
+| `fhirconnect.openfhir.syncMethod` | `bootstrap` | How *Sync Mappings with openFHIR* and saving bring the workspace to the engine: `bootstrap` (the engine reloads its own bootstrap folder) or `api` (the files are uploaded through the REST API). |
+| `fhirconnect.openfhir.syncOnSave` | `true` | When a mapping file or `.opt` is saved, make openFHIR reload its bootstrap folder (`bootstrap`, files inside it only) or upload the file (`api`). |
 | `fhirconnect.openfhir.bootstrapFolder` | empty | Folder the engine reads as bootstrap folder, absolute or relative to the workspace; empty = the workspace folder. |
 | `fhirconnect.openfhir.format` | `canonical` | Format of the Composition *Run Mapping to openEHR* returns (`canonical` or `flat`). |
 | `fhirconnect.trace.server` | `off` | Trace the communication with the language server (`messages`, `verbose`) in the *FHIRConnect* output channel. |
@@ -628,6 +688,9 @@ Open the settings with `Ctrl+,` and search for `fhirconnect`.
 | *Is it openFHIR 3.0.3 or later?* | The URL points to another service or an older engine; pull the latest image (`docker compose pull`). |
 | The run buttons do not appear | The open file is JSON and is a FHIR resource (`resourceType`) or an openEHR Composition; fix JSON errors first. |
 | openFHIR maps nothing or picks another context | Pick the template explicitly; check that the context is loaded (*Sync Mappings with openFHIR* counts it) and has no failure in *Problems*. |
+| My local changes do not reach an engine on a server | *Sync Mappings with openFHIR* with the `bootstrap` method only makes the engine reload its own folder. Set `fhirconnect.openfhir.syncMethod` to `api`, or use *Upload Mappings to openFHIR*. |
+| *Does it have the openFHIR REST API?* | The engine does not answer `GET /fc/model`, `/fc/context` or `/opt` with a list: check the URL, and the token if the engine needs one. |
+| *I/O error while reading input message* on an upload | The engine could not read the YAML of that file; fix the problems the extension reports on it first. |
 | *Model mapper with this name … already exists* in *Problems* | openFHIR keeps one namespace of `metadata.name` for the whole bootstrap folder; two projects with a mapping of the same name cannot be loaded together. Mount only the folders of one project (its `model` and `projects/...` folders) or rename one of them. |
 | 404 on `$toopenehr` through a proxy | Some proxies encode the `$` of the operation; call the engine directly. |
 | Inlay hints clutter the editor | Set `fhirconnect.inlayHints.enable` to `false`. |

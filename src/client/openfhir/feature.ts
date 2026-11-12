@@ -10,6 +10,7 @@ import {
   type CompositionFormat,
   type OutcomeIssue,
 } from './client';
+import { planUpload, readLocalFile, type LocalFile, type UploadPlan } from './upload';
 
 /** A context mapping of the workspace, as the language server lists it. */
 interface ContextInfo {
@@ -20,17 +21,21 @@ interface ContextInfo {
 }
 
 const TOKEN_KEY = 'fhirconnect.openfhir.token';
+const UPLOAD_GLOB = '**/*.{yml,yaml,opt}';
+const UPLOAD_EXCLUDE = '**/{node_modules,.git}/**';
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', 'host.docker.internal']);
 
 /**
- * Runs mappings with an openFHIR engine: keeps the engine's bootstrap folder in sync with the
- * workspace, sends the open FHIR resource or openEHR Composition to `$toopenehr` / `$tofhir`, and
+ * Runs mappings with an openFHIR engine: keeps the engine in sync with the workspace (by reloading
+ * its bootstrap folder, or by uploading the files through its REST API), sends the open FHIR resource or openEHR Composition to `$toopenehr` / `$tofhir`, and
  * shows the result next to it with the engine's issues in *Problems*.
  */
 export class OpenFhirFeature {
   private readonly output = vscode.window.createOutputChannel('FHIRConnect openFHIR');
   private readonly runProblems = vscode.languages.createDiagnosticCollection('openFHIR');
   private readonly bootstrapProblems = vscode.languages.createDiagnosticCollection('openFHIR bootstrap');
+  private readonly uploadProblems = vscode.languages.createDiagnosticCollection('openFHIR upload');
+  private readonly savedForUpload = new Map<string, vscode.Uri>();
   private readonly status = vscode.window.createStatusBarItem('fhirconnect.openfhir', vscode.StatusBarAlignment.Right, 90);
   private syncTimer: NodeJS.Timeout | undefined;
   private remoteConfirmed = new Set<string>();
@@ -49,9 +54,13 @@ export class OpenFhirFeature {
       this.output,
       this.runProblems,
       this.bootstrapProblems,
+      this.uploadProblems,
       this.status,
       vscode.commands.registerCommand('fhirconnect.openfhir.checkConnection', () => this.checkConnection()),
-      vscode.commands.registerCommand('fhirconnect.openfhir.sync', () => this.sync(true)),
+      vscode.commands.registerCommand('fhirconnect.openfhir.sync', () => (this.config.syncMethod === 'api' ? this.upload(undefined, true) : this.sync(true))),
+      vscode.commands.registerCommand('fhirconnect.openfhir.upload', (uri?: vscode.Uri, uris?: vscode.Uri[]) =>
+        this.upload(uris?.length ? uris : uri ? [uri] : undefined, true),
+      ),
       vscode.commands.registerCommand('fhirconnect.openfhir.runToOpenEhr', (uri?: vscode.Uri) => this.run('toOpenEhr', uri)),
       vscode.commands.registerCommand('fhirconnect.openfhir.runToFhir', (uri?: vscode.Uri) => this.run('toFhir', uri)),
       vscode.commands.registerCommand('fhirconnect.openfhir.setToken', () => this.setToken()),
@@ -86,6 +95,7 @@ export class OpenFhirFeature {
     return {
       url: config.get<string>('url', 'http://localhost:8080').trim() || 'http://localhost:8080',
       syncOnSave: config.get<boolean>('syncOnSave', true),
+      syncMethod: config.get<'bootstrap' | 'api'>('syncMethod', 'bootstrap'),
       format: config.get<CompositionFormat>('format', 'canonical'),
       bootstrapFolder: config.get<string>('bootstrapFolder', ''),
     };
@@ -100,9 +110,18 @@ export class OpenFhirFeature {
   // Connection and bootstrap
 
   private async checkConnection(): Promise<void> {
-    const { url } = this.config;
+    const { url, syncMethod } = this.config;
     try {
-      const loaded = await (await this.client()).loadedFiles();
+      const client = await this.client();
+      if (syncMethod === 'api') {
+        const [contexts, models, templates] = await Promise.all((['context', 'model', 'template'] as const).map((kind) => client.listStored(kind)));
+        this.setStatus('connected');
+        void vscode.window.showInformationMessage(
+          `openFHIR at ${url} answers: it stores ${contexts.length} context mappings, ${models.length} model and extension mappings and ${templates.length} templates.`,
+        );
+        return;
+      }
+      const loaded = await client.loadedFiles();
       this.setStatus('connected');
       void vscode.window.showInformationMessage(`openFHIR at ${url} answers: ${loaded} mapping and template files loaded.`);
     } catch (error) {
@@ -113,10 +132,18 @@ export class OpenFhirFeature {
   private onSave(document: vscode.TextDocument): void {
     if (!this.config.syncOnSave || !/\.(ya?ml|opt)$/i.test(document.fileName)) return;
     if (document.fileName.match(/\.ya?ml$/i) && !/^grammar:\s*["']?FHIRConnect\//m.test(document.getText())) return;
-    if (!this.insideBootstrapFolder(document.uri)) return;
-    // several files saved at once (Save All) give one bootstrap
+    if (this.config.syncMethod === 'api') {
+      if (!vscode.workspace.getWorkspaceFolder(document.uri)) return;
+      this.savedForUpload.set(document.uri.toString(), document.uri);
+    } else if (!this.insideBootstrapFolder(document.uri)) return;
+    // several files saved at once (Save All) give one bootstrap or upload
     if (this.syncTimer) clearTimeout(this.syncTimer);
-    this.syncTimer = setTimeout(() => void this.sync(false), 500);
+    this.syncTimer = setTimeout(() => {
+      if (this.config.syncMethod !== 'api') return void this.sync(false);
+      const saved = [...this.savedForUpload.values()];
+      this.savedForUpload.clear();
+      void this.upload(saved, false);
+    }, 500);
   }
 
   /** Makes the engine reload its bootstrap folder. Only an explicit sync reports a failed connection. */
@@ -141,6 +168,138 @@ export class OpenFhirFeature {
         this.log(`Bootstrap after save failed: ${message(error)}`);
       }
     }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Upload through the REST API
+
+  /**
+   * Uploads mapping files and operational templates to the REST API of the engine: each file
+   * replaces the object stored under the same name, or creates a new one. `targets` are files or
+   * folders; without them, the whole workspace. An explicit upload shows the plan and asks first;
+   * an upload after save sends the saved files and only logs.
+   */
+  private async upload(targets: vscode.Uri[] | undefined, explicit: boolean): Promise<void> {
+    const files = await this.localFiles(targets);
+    if (files.length === 0) {
+      if (explicit) void vscode.window.showWarningMessage('No FHIRConnect mapping files or operational templates (.opt) to upload.');
+      return;
+    }
+    if (!(await this.confirmRemote(`${files.length === 1 ? 'The file' : `${files.length} files`} will be sent`))) return;
+    const { url } = this.config;
+    const started = Date.now();
+    try {
+      const client = await this.client();
+      const kinds = [...new Set(files.map((f) => f.kind))];
+      const stored = (await Promise.all(kinds.map((kind) => client.listStored(kind)))).flat();
+      const plan = planUpload(files, stored);
+      this.logPlan(plan);
+      if (explicit && !(await this.confirmPlan(plan, url))) return;
+
+      const results = await vscode.window.withProgress(
+        { location: explicit ? vscode.ProgressLocation.Notification : vscode.ProgressLocation.Window, title: `Uploading to openFHIR`, cancellable: false },
+        async (progress) => {
+          const done: { file: LocalFile; action: 'create' | 'update'; error?: string }[] = [];
+          for (const step of plan.steps) {
+            progress.report({ message: this.relative(step.file.path), increment: 100 / plan.steps.length });
+            try {
+              await client.store(step.file.kind, step.file.content, step.id);
+              done.push({ file: step.file, action: step.action });
+            } catch (error) {
+              // a lost connection fails every file the same way: stop at the first one
+              if (error instanceof OpenFhirError && error.status === undefined) throw error;
+              done.push({ file: step.file, action: step.action, error: message(error) });
+            }
+          }
+          return done;
+        },
+      );
+      this.setStatus('connected');
+      const failed = results.filter((r) => r.error);
+      const created = results.filter((r) => !r.error && r.action === 'create').length;
+      const updated = results.filter((r) => !r.error && r.action === 'update').length;
+      const summary = `${created} created, ${updated} updated, ${failed.length} failed${plan.skipped.length ? `, ${plan.skipped.length} skipped` : ''}`;
+      this.log(`Upload to ${url} (${Date.now() - started} ms): ${summary}`);
+      for (const r of failed) this.log(`  failed: ${this.relative(r.file.path)}: ${r.error}`);
+      for (const r of results) this.uploadProblems.delete(vscode.Uri.parse(r.file.path));
+      for (const s of plan.skipped) this.uploadProblems.delete(vscode.Uri.parse(s.file.path));
+      for (const r of failed) this.setUploadProblem(r.file.path, `openFHIR did not store this file: ${r.error}`, vscode.DiagnosticSeverity.Error);
+      for (const s of plan.skipped) this.setUploadProblem(s.file.path, `Not uploaded to openFHIR: ${s.reason}.`, vscode.DiagnosticSeverity.Warning);
+      if (explicit || failed.length) {
+        const text = `openFHIR at ${url} stored the files: ${summary}.`;
+        void (failed.length || plan.skipped.length ? vscode.window.showWarningMessage(text, 'Show Problems', 'Show Log') : vscode.window.showInformationMessage(text, 'Show Log')).then(
+          (choice) => {
+            if (choice === 'Show Problems') void vscode.commands.executeCommand('workbench.actions.view.problems');
+            if (choice === 'Show Log') this.output.show(true);
+          },
+        );
+      }
+    } catch (error) {
+      if (explicit) this.fail(error, 'Upload');
+      else {
+        this.setStatus('error', error);
+        this.log(`Upload after save failed: ${message(error)}`);
+      }
+    }
+  }
+
+  /** The uploadable files under the targets (files or folders), or of the whole workspace. */
+  private async localFiles(targets: vscode.Uri[] | undefined): Promise<LocalFile[]> {
+    const uris = new Map<string, vscode.Uri>();
+    const add = (uri: vscode.Uri) => uris.set(uri.toString(), uri);
+    if (!targets) (await vscode.workspace.findFiles(UPLOAD_GLOB, UPLOAD_EXCLUDE)).forEach(add);
+    for (const target of targets ?? []) {
+      const stat = await vscode.workspace.fs.stat(target).then(undefined, () => undefined);
+      if (stat?.type === vscode.FileType.Directory) (await vscode.workspace.findFiles(new vscode.RelativePattern(target, UPLOAD_GLOB), UPLOAD_EXCLUDE)).forEach(add);
+      else if (stat) add(target);
+    }
+    const decoder = new TextDecoder();
+    const files = await Promise.all(
+      [...uris.values()].map(async (uri) => {
+        const open = vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
+        const content = open ? open.getText() : decoder.decode(await vscode.workspace.fs.readFile(uri));
+        return readLocalFile(uri.toString(), content);
+      }),
+    );
+    return files.filter((f): f is LocalFile => !!f);
+  }
+
+  /** Shows what the upload will do and asks to go on. */
+  private async confirmPlan(plan: UploadPlan, url: string): Promise<boolean> {
+    if (plan.steps.length === 0) {
+      void vscode.window.showWarningMessage(`Nothing to upload: ${plan.skipped.length} file(s) skipped. See View → Output → FHIRConnect openFHIR.`, 'Show Log').then(
+        (choice) => choice && this.output.show(true),
+      );
+      return false;
+    }
+    const created = plan.steps.filter((s) => s.action === 'create');
+    const updated = plan.steps.filter((s) => s.action === 'update');
+    const lines = plan.steps.map((s) => `${s.action === 'create' ? 'new' : 'replace'}: ${this.relative(s.file.path)}${s.replaces ? ` (stored as ${s.replaces})` : ''}`);
+    const shown = lines.slice(0, 25);
+    if (lines.length > shown.length) shown.push(`… and ${lines.length - shown.length} more (see the log)`);
+    if (plan.skipped.length) shown.push('', `${plan.skipped.length} file(s) skipped, see the log.`);
+    const choice = await vscode.window.showInformationMessage(
+      `Upload ${plan.steps.length} file(s) to openFHIR at ${url}? ${created.length} new, ${updated.length} replace what the engine stores under the same name.`,
+      { modal: true, detail: shown.join('\n') },
+      'Upload',
+    );
+    return choice === 'Upload';
+  }
+
+  private logPlan(plan: UploadPlan): void {
+    this.log(`Upload plan: ${plan.steps.length} file(s), ${plan.skipped.length} skipped`);
+    for (const s of plan.steps) this.log(`  ${s.action}: ${this.relative(s.file.path)}${s.replaces ? ` (replaces ${s.replaces})` : ''}`);
+    for (const s of plan.skipped) this.log(`  skipped: ${this.relative(s.file.path)}: ${s.reason}`);
+  }
+
+  private setUploadProblem(uri: string, text: string, level: vscode.DiagnosticSeverity): void {
+    const diagnostic = new vscode.Diagnostic(new vscode.Range(0, 0, 0, 0), text, level);
+    diagnostic.source = 'openFHIR';
+    this.uploadProblems.set(vscode.Uri.parse(uri), [diagnostic]);
+  }
+
+  private relative(uri: string): string {
+    return vscode.workspace.asRelativePath(vscode.Uri.parse(uri));
   }
 
   /** Files the engine could not load, as problems on the files of the bootstrap folder. */
@@ -212,7 +371,7 @@ export class OpenFhirFeature {
       void vscode.window.showWarningMessage('Run Mapping to FHIR needs an openEHR Composition in canonical or flat JSON.');
       return;
     }
-    if (!(await this.confirmRemote())) return;
+    if (!(await this.confirmRemote('The file will be sent'))) return;
 
     const suggested = direction === 'toFhir' && format === 'canonical' ? canonicalTemplateId(json) : undefined;
     const templateId = await this.pickTemplate(document, direction, format, suggested);
@@ -299,8 +458,8 @@ export class OpenFhirFeature {
     );
   }
 
-  /** The open file leaves the computer only after the user agrees, once per engine and session. */
-  private async confirmRemote(): Promise<boolean> {
+  /** Files leave the computer only after the user agrees, once per engine and session. */
+  private async confirmRemote(what: string): Promise<boolean> {
     const { url } = this.config;
     let host: string;
     try {
@@ -311,7 +470,7 @@ export class OpenFhirFeature {
     }
     if (LOCAL_HOSTS.has(host) || this.remoteConfirmed.has(url)) return true;
     const choice = await vscode.window.showWarningMessage(
-      `The file will be sent to the openFHIR engine at ${url}, which is not on this computer. Do not send real patient data to a test engine.`,
+      `${what} to the openFHIR engine at ${url}, which is not on this computer. Do not send real patient data to a test engine.`,
       { modal: true },
       'Send',
     );

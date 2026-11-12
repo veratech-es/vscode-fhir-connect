@@ -152,6 +152,43 @@ describe('openFHIR client', () => {
   });
 });
 
+describe('openFHIR REST API', () => {
+  it('lists stored mappings and templates by name', async () => {
+    handler = (call, res) => {
+      if (call.url === '/fc/context')
+        return send(res, 200, [{ id: 'c1', type: 'context', metadata: { name: 'lab.context' }, context: { template: { id: 'KDS_Laborbericht' } } }], 'application/json');
+      if (call.url === '/fc/model') return send(res, 200, [{ id: 'm1', type: 'extension', metadata: { name: 'KDS_laborbericht' } }, { metadata: { name: 'no id' } }], 'application/json');
+      send(res, 200, [{ id: 't1', templateId: 'kds_laborbericht', originalTemplateId: 'KDS_Laborbericht', content: 'redacted' }], 'application/json');
+    };
+    const client = new OpenFhirClient({ baseUrl });
+    expect(await client.listStored('context')).toEqual([{ kind: 'context', id: 'c1', name: 'lab.context', type: 'context', templateId: 'KDS_Laborbericht' }]);
+    expect(await client.listStored('model')).toEqual([{ kind: 'model', id: 'm1', name: 'KDS_laborbericht', type: 'extension', templateId: undefined }]);
+    expect(await client.listStored('template')).toEqual([{ kind: 'template', id: 't1', name: 'KDS_Laborbericht' }]);
+    expect(calls.map((c) => c.url)).toEqual(['/fc/context', '/fc/model', '/opt']);
+  });
+
+  it('creates with POST and replaces with PUT, as YAML or XML', async () => {
+    handler = (call, res) => send(res, 200, { id: call.url.endsWith('/x1') ? 'x1' : 'new' }, 'application/json');
+    const client = new OpenFhirClient({ baseUrl, token: 'secret' });
+    expect(await client.store('model', 'grammar: FHIRConnect/v1.0.0')).toBe('new');
+    expect(await client.store('template', '<template/>', 'x1')).toBe('x1');
+    expect(calls.map((c) => [c.method, c.url, c.headers['content-type'], c.body])).toEqual([
+      ['POST', '/fc/model', 'application/x-yaml', 'grammar: FHIRConnect/v1.0.0'],
+      ['PUT', '/opt/x1', 'application/xml', '<template/>'],
+    ]);
+    expect(calls[0].headers.authorization).toBe('Bearer secret');
+  });
+
+  it('reports the reason of a refused upload', async () => {
+    handler = (_call, res) => send(res, 400, ['A context mapper for this template already exists.'], 'application/json');
+    const error = await new OpenFhirClient({ baseUrl }).store('context', 'x').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(OpenFhirError);
+    expect((error as OpenFhirError).message).toBe('openFHIR answered 400 to POST /fc/context: A context mapper for this template already exists.');
+    handler = (_call, res) => send(res, 400, { status: 400, error: 'Bad Request', message: 'I/O error while reading input message' }, 'application/json');
+    expect(((await new OpenFhirClient({ baseUrl }).store('model', 'x').catch((e: unknown) => e)) as Error).message).toMatch(/I\/O error while reading input message$/);
+  });
+});
+
 describe('openFHIR inputs', () => {
   it('tells canonical and flat compositions and FHIR resources apart', () => {
     expect(compositionFormat({ _type: 'COMPOSITION', archetype_node_id: 'openEHR-EHR-COMPOSITION.report.v1' })).toBe('canonical');
