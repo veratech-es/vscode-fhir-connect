@@ -177,6 +177,7 @@ tests run on it.
    against the template of their context.
    **0.7.0:** mappings and templates are uploaded to an openFHIR engine on a server through its
    REST API (*Upload Mappings to openFHIR*, `fhirconnect.openfhir.syncMethod`).
+   **0.7.1:** path completion also offers the attributes of RM subclasses (`performer/name`).
 6. **Later:** AQL conversion, web templates, ADL 2.
 
 ## Author

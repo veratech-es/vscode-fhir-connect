@@ -1,6 +1,6 @@
 # FHIRConnect for VS Code: cheat sheet
 
-Version 0.7.0. The [user guide](user-guide.md) explains each feature in detail.
+Version 0.7.1. The [user guide](user-guide.md) explains each feature in detail.
 
 The extension acts on `.yml` / `.yaml` files with a top-level `grammar: FHIRConnect/v0.9.0` or
 `grammar: FHIRConnect/v1.0.0` line; each file is checked with the version it declares.
@@ -55,7 +55,7 @@ the context's template. Running mappings needs an openFHIR engine, e.g. in Docke
 | Unresolved names | Automatic warning on names no file declares |
 | Path hover | Mouse over a path segment: node label, RM type, cardinality, archetype or template / FHIR type |
 | Inlay hints | Grey hint after each `with.fhir` / `with.openehr` line |
-| Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes, FHIR elements, `as(T)`, types inside `as(` |
+| Path completion | `Ctrl+Space` inside a path: child nodes `attr[code]`, RM attributes (also of subclasses), FHIR elements, `as(T)`, types inside `as(` |
 | Jump into the archetype or template | `F12` on an openEHR path segment (archetype in a model, template in an extension), or on `context.template.id` |
 | Jump into the archetype | `Ctrl+Alt+F12` on an openEHR path segment (needs the `.adl` in the workspace) |
 | Path warnings | Automatic warning on the first segment that does not resolve |

@@ -187,6 +187,18 @@ export function rmAttributes(type: string): RmAttribute[] {
   return result;
 }
 
+/**
+ * Attributes a path may step into from `type`: its own and inherited ones first, then those that only
+ * its descendants declare (`performer` is a PARTY_PROXY, but a PARTY_IDENTIFIED has `name`).
+ */
+export function rmAttributesWithDescendants(type: string): RmAttribute[] {
+  const result = rmAttributes(type);
+  for (const sub of subclasses.get(type) ?? []) {
+    for (const attribute of rmAttributes(sub)) if (!result.some((a) => a.name === attribute.name)) result.push(attribute);
+  }
+  return result;
+}
+
 /** The attribute `name` of `type`, or of any of its descendants when `type` is abstract. */
 export function rmAttribute(type: string, name: string): RmAttribute | undefined {
   const own = rmAttributes(type).find((a) => a.name === name);
