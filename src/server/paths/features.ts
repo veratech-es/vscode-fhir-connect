@@ -8,7 +8,7 @@ import { CompletionItemKind, type CompletionItem } from 'vscode-languageserver';
 import { fhirElements } from '../models/fhir';
 import type { ModelIndex } from '../models';
 import type { OptNode } from '../models/opt';
-import { rmAttributes } from '../models/rm';
+import { rmAttributes, rmAttributesWithDescendants } from '../models/rm';
 import { scalarAt } from '../workspace';
 import type { FcDocument } from '../document';
 import { resolveFhirPath, resolveOpenEhrPath, type Context, type FhirState, type FileResolution, type OpenEhrState, type PathSide, type PathSite, type Step } from './resolver';
@@ -352,9 +352,17 @@ function openEhrItems(state: OpenEhrState): CompletionItem[] {
   }
   const types = state.nodes.length > 0 ? [...new Set(state.nodes.map((n) => n.rmType))] : state.rmTypes;
   for (const type of types) {
-    for (const attribute of rmAttributes(type)) {
+    const ownNames = new Set(rmAttributes(type).map((a) => a.name));
+    for (const attribute of rmAttributesWithDescendants(type)) {
       if (state.nodes.some((n) => (n.attributes.get(attribute.name)?.children.length ?? 0) > 0)) continue;
-      add({ label: attribute.name, kind: CompletionItemKind.Property, detail: `${attribute.type}${attribute.multiple ? ' (list)' : ''} · RM ${attribute.declaredIn}`, sortText: '1' });
+      // attributes of a subclass (PARTY_IDENTIFIED.name below a PARTY_PROXY) say so and come after the own ones
+      const own = ownNames.has(attribute.name);
+      add({
+        label: attribute.name,
+        kind: CompletionItemKind.Property,
+        detail: `${attribute.type}${attribute.multiple ? ' (list)' : ''} · RM ${attribute.declaredIn}${own ? '' : ` (if ${type} is a ${attribute.declaredIn})`}`,
+        sortText: own ? '1' : '2',
+      });
     }
   }
   return items;

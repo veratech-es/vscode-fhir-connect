@@ -6,7 +6,7 @@ import { ModelIndex } from '../src/server/models';
 import { findWorkspaceFiles } from '../src/server/scan';
 import { castType, fhirElement } from '../src/server/models/fhir';
 import { parseOpt } from '../src/server/models/opt';
-import { rmAttribute } from '../src/server/models/rm';
+import { rmAttribute, rmAttributesWithDescendants } from '../src/server/models/rm';
 import { archetypeDefinitions, archetypeFileAt, modelReferenceAt, pathCompletions, pathDefinitions, pathHover, pathInlayHints, siteAt } from '../src/server/paths/features';
 import { PathResolver, resolveFhirPath, type FhirState } from '../src/server/paths/resolver';
 import { openEhrSteps } from '../src/server/paths/syntax';
@@ -346,6 +346,21 @@ describe('path completion', () => {
   it('offers RM attributes past the constrained nodes', () => {
     const found = completeAt(LAB, 'openehr: "$composition/context/start_time"', 'openehr', '$composition/context/')!;
     expect(found.items.map((i) => i.label)).toEqual(expect.arrayContaining(['start_time', 'end_time', 'setting', 'health_care_facility']));
+  });
+
+  it('offers the attributes of the subclasses of an abstract RM type, after its own', () => {
+    const found = completeAt(LAB, 'openehr: "$composition/context/start_time"', 'openehr', '$composition/context/participations/performer/')!;
+    const byLabel = new Map(found.items.map((i) => [i.label, i]));
+    expect(byLabel.get('external_ref')?.detail).toBe('PARTY_REF · RM PARTY_PROXY');
+    expect(byLabel.get('name')?.detail).toBe('String · RM PARTY_IDENTIFIED (if PARTY_PROXY is a PARTY_IDENTIFIED)');
+    expect(byLabel.get('identifiers')?.detail).toBe('DV_IDENTIFIER (list) · RM PARTY_IDENTIFIED (if PARTY_PROXY is a PARTY_IDENTIFIED)');
+    expect(byLabel.get('relationship')?.detail).toContain('RM PARTY_RELATED');
+    expect(Number(byLabel.get('name')?.sortText)).toBeGreaterThan(Number(byLabel.get('external_ref')?.sortText));
+  });
+
+  it('lists an abstract RM type with its descendants\' attributes', () => {
+    expect(rmAttributesWithDescendants('PARTY_PROXY').map((a) => a.name)).toEqual(['external_ref', 'name', 'identifiers', 'relationship']);
+    expect(rmAttributesWithDescendants('PARTY_IDENTIFIED').map((a) => a.name)).toEqual(['name', 'identifiers', 'external_ref', 'relationship']);
   });
 
   it('offers FHIR elements and the casts of a choice element', () => {

@@ -459,7 +459,10 @@ side, with `[]` when the element repeats (`CodeableConcept[]`). Turn them off wi
 
 - openEHR: the child nodes of the current node as `attribute[code]`, labelled with the node text
   (type the label to filter), with a `name/value` predicate when two siblings share a code; then the
-  RM attributes of the node's class (`value`, `defining_code`, `null_flavour`, …).
+  RM attributes of the node's class (`value`, `defining_code`, `null_flavour`, …). When that class is
+  abstract, the attributes of its subclasses follow, marked with the subclass: below
+  `participations/performer` (a `PARTY_PROXY`) you get `external_ref`, then `name` and `identifiers`
+  (if it is a `PARTY_IDENTIFIED`) and `relationship` (if it is a `PARTY_RELATED`).
 - FHIR: the elements of the current type with type and cardinality, and `as(T)` for each type of a
   choice element.
 - Inside `as(` / `ofType(`: the types the element can be cast to, plus the resources a Reference may

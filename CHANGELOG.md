@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 (2026-11-18)
+
+- Path completion offers the attributes of the subclasses of an abstract RM class, after its own
+  ones and marked with the subclass. Below `$composition/context/participations/performer/`, a
+  `PARTY_PROXY`, it now offers `name` and `identifiers` (`PARTY_IDENTIFIED`) and `relationship`
+  (`PARTY_RELATED`), not only `external_ref`. Such paths were already accepted by validation.
+
 ## 0.7.0 (2026-11-12)
 
 Mappings can now be brought to an openFHIR engine on a server, which does not see your mapping folder.
